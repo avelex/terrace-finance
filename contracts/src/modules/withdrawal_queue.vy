@@ -54,7 +54,8 @@ def _add_withdrawal(amount: uint256):
 @internal
 def _remove_withdrawal() -> WithdrawalRequest:
     request: WithdrawalRequest = self.pending_withdrawals[msg.sender]
-    assert request.timestamp > 0
-    assert block.timestamp >= request.timestamp
+    assert (
+        request.timestamp > 0 and block.timestamp >= request.timestamp
+    ), "User has pending withdrawal"
     self.pending_withdrawals[msg.sender] = empty(WithdrawalRequest)
     return request

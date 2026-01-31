@@ -22,18 +22,21 @@ def __init__():
 
 @external
 def update_root_hash(root: bytes32):
-    self._update_root_hash(root)
-
-
-def _update_root_hash(root: bytes32):
     access_control._check_role(access_control.DEFAULT_ADMIN_ROLE, msg.sender)
     self.strategy_root_hash = root
     log StrategyRootHashUpdated(root=root)
 
 
+@external
+@view
+def is_strategy_allowed(target: address, selector: Bytes[4], proof: DynArray[bytes32, merkle_proof_verification._DYNARRAY_BOUND]) -> bool:
+    return self._is_allowed(target, selector, proof)
+
 @internal
 @view
-def _is_allowed(proof: DynArray[bytes32, 32], strategy_hash: bytes32) -> bool:
+def _is_allowed(target: address, selector: Bytes[4], proof: DynArray[bytes32, merkle_proof_verification._DYNARRAY_BOUND]) -> bool:
+    encoded: Bytes[128] = abi_encode(target, convert(selector, bytes4))
+    strategy_hash: bytes32 = keccak256(keccak256(encoded))
     return merkle_proof_verification._verify(
         proof, self.strategy_root_hash, strategy_hash
     )

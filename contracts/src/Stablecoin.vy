@@ -13,7 +13,7 @@ from snekmate.tokens import erc20
 
 initializes: erc20[ownable := ow]
 
-from src import withdrawal_queue
+from src.modules import withdrawal_queue
 
 initializes: withdrawal_queue[access_control := access]
 
@@ -21,7 +21,7 @@ from src import Vault
 
 initializes: Vault[access := access]
 
-from src import strategy_registry
+from src.modules import strategy_registry
 
 exports: (
     erc20.__interface__,
@@ -75,8 +75,9 @@ def set_staking(staking: address):
 def deposit(amount: uint256):
     assert amount > 0
     assert extcall IERC20(USDC).transferFrom(msg.sender, self, amount)
-    erc20._mint(msg.sender, amount)
-    log Deposit(user=msg.sender, amount=amount)
+    scaled_amount: uint256 = amount * 10**12
+    erc20._mint(msg.sender, scaled_amount)
+    log Deposit(user=msg.sender, amount=scaled_amount)
 
 
 @external
@@ -93,5 +94,6 @@ def execute_withdraw():
         withdrawal_queue._remove_withdrawal()
     )
     erc20._burn(self, req.amount)
-    assert extcall IERC20(USDC).transferFrom(self, msg.sender, req.amount)
-    log Withdraw(user=msg.sender, amount=req.amount)
+    real_amount: uint256 = req.amount // 10**12
+    assert extcall IERC20(USDC).transfer(msg.sender, real_amount)
+    log Withdraw(user=msg.sender, amount=real_amount)
