@@ -1,5 +1,6 @@
 # pragma version ^0.4.3
 # @license MIT
+from src.modules import roles
 from snekmate.auth import access_control as access
 
 initializes: access
@@ -36,6 +37,7 @@ exports: (
     withdrawal_queue.__interface__,
     ledger.__interface__,
     cctp.__interface__,
+    roles.__interface__,
 )
 
 USDC: public(immutable(address))
@@ -78,7 +80,8 @@ def __init__(
     withdrawal_queue.__init__(withdrawal_delay)
     strategy_registry.__init__()
     cctp.__init__(hub_domain, messanger, transmitter)
-
+    # renouncing ownership
+    ow._transfer_ownership(empty(address))
 
 @external
 def set_staking(staking: address):
