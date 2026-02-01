@@ -1,8 +1,16 @@
 # pragma version ^0.4.3
 # @license MIT
+from snekmate.auth import access_control
+
+uses: access_control
+
+from ethereum.ercs import IERC20
+
 from src.modules import ledger
 
 uses: ledger
+
+from src.modules import roles
 
 #  MessageV2 format
 #  * Field                        Bytes      Type       Index
@@ -51,21 +59,148 @@ struct BurnMessageV2:
     expirationBlock: uint256
     hookData: Bytes[64]
 
-    
-interface IMessageTransmitter:
-    def receiveMessage(message: Bytes[1024], attestation: Bytes[1024]) -> bool: nonpayable
 
-MESSAGE_TRANSMITTER: public(immutable(address))
+interface ITokenMessanger:
+    def depositForBurn(
+        amount: uint256,
+        destinationDomain: uint32,
+        mintRecipient: bytes32,
+        burnToken: address,
+        destinationCaller: bytes32,
+        maxFee: uint256,
+        minFinalityThreshold: uint32,
+    ): nonpayable
+    def depositForBurnWithHook(
+        amount: uint256,
+        destinationDomain: uint32,
+        mintRecipient: bytes32,
+        burnToken: address,
+        destinationCaller: bytes32,
+        maxFee: uint256,
+        minFinalityThreshold: uint32,
+        hookData: Bytes[64],
+    ): nonpayable
+
+
+interface IMessageTransmitter:
+    def receiveMessage(
+        message: Bytes[1024], attestation: Bytes[1024]
+    ) -> bool: nonpayable
+    def localDomain() -> uint32: view
+
+
+MESSANGER: public(immutable(address))
+TRANSMITTER: public(immutable(address))
+HUB_DOMAIN: public(immutable(uint32))
+
+whitelisted_domains: public(HashMap[uint32, address])
+
 
 @deploy
-def __init__(transmitter: address):
+def __init__(hub_domain: uint32, messanger: address, transmitter: address):
+    assert messanger != empty(address)
     assert transmitter != empty(address)
-    MESSAGE_TRANSMITTER = transmitter
+
+    MESSANGER = messanger
+    TRANSMITTER = transmitter
+    HUB_DOMAIN = hub_domain
+
+
+@external
+def update_whitelisted_domain(domain: uint32, terrace: address):
+    access_control._check_role(access_control.DEFAULT_ADMIN_ROLE, msg.sender)
+    self.whitelisted_domains[domain] = terrace
 
 
 @external
 def receive_message(message: Bytes[1024], attestation: Bytes[1024]):
-    assert extcall IMessageTransmitter(MESSAGE_TRANSMITTER).receiveMessage(message, attestation)
+    assert extcall IMessageTransmitter(TRANSMITTER).receiveMessage(
+        message, attestation
+    )
     bridge_message: MessageV2 = abi_decode(message, MessageV2)
-    burn_message: BurnMessageV2 = abi_decode(bridge_message.messageBody, BurnMessageV2)
-    ledger._fill(burn_message.amount)
+    burn_message: BurnMessageV2 = abi_decode(
+        bridge_message.messageBody, BurnMessageV2
+    )
+
+    if self._is_hub():
+        # from terrace to hub
+        whitelsited_terrace: address = self.whitelisted_domains[
+            bridge_message.sourceDomain
+        ]
+        assert whitelsited_terrace != empty(address)
+        # TODO: check that sender is whitelsited_terrace
+        ledger._repay(whitelsited_terrace, burn_message.amount)
+    else:
+        # from hub to terrace
+        assert bridge_message.sourceDomain == HUB_DOMAIN
+        ledger._fill(burn_message.amount)
+
+
+@external
+def send_to_terrace(
+    amount: uint256,
+    destination_domain: uint32,
+    max_fee: uint256,
+    min_finality_threshold: uint32,
+):
+    access_control._check_role(roles.OPERATOR_ROLE, msg.sender)
+    whitelsited_terrace: address = self.whitelisted_domains[destination_domain]
+
+    assert whitelsited_terrace != empty(address)
+    assert amount > 0
+    assert destination_domain != HUB_DOMAIN
+    assert min_finality_threshold > 0
+
+    ledger._borrow(whitelsited_terrace, amount)
+
+    encoded_terrace: bytes32 = convert(whitelsited_terrace, bytes32)
+
+    extcall IERC20(ledger.USDC).approve(MESSANGER, amount)
+    extcall ITokenMessanger(MESSANGER).depositForBurn(
+        amount,
+        destination_domain,
+        encoded_terrace,
+        ledger.USDC,
+        empty(bytes32),  # can call any address
+        max_fee,
+        min_finality_threshold,
+    )
+
+
+@external
+def send_to_hub(
+    amount: uint256, max_fee: uint256, min_finality_threshold: uint32
+):
+    access_control._check_role(roles.OPERATOR_ROLE, msg.sender)
+    assert amount > 0
+    assert min_finality_threshold > 0
+
+    hub_address: address = self.whitelisted_domains[HUB_DOMAIN]
+    assert hub_address != empty(address)
+
+    encoded_hub: bytes32 = convert(hub_address, bytes32)
+
+    ledger._deplete(amount)
+
+    extcall IERC20(ledger.USDC).approve(MESSANGER, amount)
+    extcall ITokenMessanger(MESSANGER).depositForBurn(
+        amount,
+        HUB_DOMAIN,
+        encoded_hub,
+        ledger.USDC,
+        empty(bytes32),  # can call any address
+        max_fee,
+        min_finality_threshold,
+    )
+
+
+@internal
+@view
+def _is_hub() -> bool:
+    return self._local_domain() == HUB_DOMAIN
+
+
+@internal
+@view
+def _local_domain() -> uint32:
+    return staticcall IMessageTransmitter(TRANSMITTER).localDomain()
