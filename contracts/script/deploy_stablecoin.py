@@ -11,10 +11,11 @@ def deploy() -> VyperContract:
     usdc = active_network.get_named_contract("usdc")
     messanger = active_network.get_named_contract("messanger")
     transmitter = active_network.get_named_contract("transmitter")
+    gateway_minter = active_network.get_named_contract("gateway_minter")
     withdrawal_delay = active_network.extra_data["withdrawal_delay"]
     hub_domain = active_network.extra_data["hub_domain"]
 
-    stablecoin = Stablecoin.deploy(usdc.address, withdrawal_delay, messanger.address, transmitter.address, hub_domain)
+    stablecoin = Stablecoin.deploy(usdc.address, withdrawal_delay, messanger.address, transmitter.address, hub_domain, gateway_minter.address)
     print("Stablecoin deployed at", stablecoin.address)
 
     result = active_network.moccasin_verify(stablecoin)
@@ -30,7 +31,6 @@ def deploy() -> VyperContract:
 
     stablecoin.set_staking(staking.address)
     print("Staking set in Stablecoin")
-
     
     return stablecoin
 

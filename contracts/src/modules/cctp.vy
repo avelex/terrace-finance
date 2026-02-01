@@ -88,6 +88,7 @@ interface IMessageTransmitter:
     ) -> bool: nonpayable
     def localDomain() -> uint32: view
 
+
 # id is for mapping SendFunds <-> ReceivedFunds events
 # id = keccak256(from_domain,to_domain,nonce)
 event SendFunds:
@@ -98,6 +99,7 @@ event SendFunds:
     to_domain: uint32
     amount: uint256
 
+
 event ReceivedFunds:
     id: bytes32
     from_terrace: address
@@ -106,12 +108,14 @@ event ReceivedFunds:
     to_domain: uint32
     amount: uint256
 
+
 MESSANGER: public(immutable(address))
 TRANSMITTER: public(immutable(address))
 HUB_DOMAIN: public(immutable(uint32))
 
 whitelisted_domains: public(HashMap[uint32, address])
 bridge_nonce: public(uint256)
+
 
 @deploy
 def __init__(hub_domain: uint32, messanger: address, transmitter: address):
@@ -146,10 +150,17 @@ def receive_message(message: Bytes[1024], attestation: Bytes[1024]):
             ledger._repay(whitelsited_terrace, actual_amount)
     else:
         # from hub to terrace
-        if source_domain == HUB_DOMAIN and burn_message.messageSender == whitelsited_terrace:
+        if (
+            source_domain == HUB_DOMAIN
+            and burn_message.messageSender == whitelsited_terrace
+        ):
             ledger._fill(actual_amount)
-    
-    self._emit_received_funds_event(source_domain, burn_message.messageSender, actual_amount, burn_message.nonce)
+    self._emit_received_funds_event(
+        source_domain,
+        burn_message.messageSender,
+        actual_amount,
+        burn_message.nonce,
+    )
 
 
 @external
@@ -210,7 +221,7 @@ def _send_to_hub(
     extcall ITokenMessanger(MESSANGER).depositForBurnWithHook(
         amount,
         HUB_DOMAIN,
-        encoded_hub, # mint recipient
+        encoded_hub,  # mint recipient
         ledger.USDC,
         encoded_hub,  # only hub can call receive message
         max_fee,
@@ -249,7 +260,7 @@ def _send_to_terrace(
     extcall ITokenMessanger(MESSANGER).depositForBurnWithHook(
         amount,
         destination_domain,
-        encoded_terrace, # mint recipient
+        encoded_terrace,  # mint recipient
         ledger.USDC,
         encoded_terrace,  # only terrace can call receive message
         max_fee,
@@ -257,7 +268,10 @@ def _send_to_terrace(
         encoded_nonce,
     )
     self.bridge_nonce = nonce
-    self._emit_send_funds_event(destination_domain, destination_terrace, amount, nonce)
+    self._emit_send_funds_event(
+        destination_domain, destination_terrace, amount, nonce
+    )
+
 
 @internal
 @view
@@ -277,13 +291,16 @@ def _get_source_domain(message: Bytes[1024]) -> uint32:
     # sourceDomain: 4 bytes at index 4
     return convert(slice(message, 4, 4), uint32)
 
+
 @internal
 @pure
 def _decode_message(message: Bytes[1024]) -> BurnMessageV2:
     # messageBody - dynamic bytes starting at index 148
     message_body_start: uint256 = 148
     message_body_len: uint256 = len(message) - message_body_start
-    message_body: Bytes[1024] = slice(message, message_body_start, message_body_len)
+    message_body: Bytes[1024] = slice(
+        message, message_body_start, message_body_len
+    )
 
     # parse BurnMessageV2 from messageBody (packed format)
     burn_version: uint32 = convert(slice(message_body, 0, 4), uint32)
@@ -305,11 +322,14 @@ def _decode_message(message: Bytes[1024]) -> BurnMessageV2:
         maxFee=max_fee,
         feeExecuted=fee_executed,
         expirationBlock=expiration_block,
-        nonce=nonce
+        nonce=nonce,
     )
 
+
 @internal
-def _emit_send_funds_event(_to_domain: uint32, _to_terrace: address, _amount: uint256, _nonce: uint256):
+def _emit_send_funds_event(
+    _to_domain: uint32, _to_terrace: address, _amount: uint256, _nonce: uint256
+):
     from_domain: uint32 = self._local_domain()
     from_terrace: address = self
     event_id: bytes32 = self._bridge_event_id(from_domain, _to_domain, _nonce)
@@ -322,8 +342,14 @@ def _emit_send_funds_event(_to_domain: uint32, _to_terrace: address, _amount: ui
         amount=_amount,
     )
 
+
 @internal
-def _emit_received_funds_event(_from_domain: uint32, _from_terrace: address, _amount: uint256, _nonce: uint256):
+def _emit_received_funds_event(
+    _from_domain: uint32,
+    _from_terrace: address,
+    _amount: uint256,
+    _nonce: uint256,
+):
     to_domain: uint32 = self._local_domain()
     to_terrace: address = self
     event_id: bytes32 = self._bridge_event_id(_from_domain, to_domain, _nonce)
@@ -335,10 +361,11 @@ def _emit_received_funds_event(_from_domain: uint32, _from_terrace: address, _am
         to_domain=to_domain,
         amount=_amount,
     )
-    
+
 
 @internal
 @pure
-def _bridge_event_id(_from_domain: uint32, _to_domain: uint32, nonce: uint256) -> bytes32:
+def _bridge_event_id(
+    _from_domain: uint32, _to_domain: uint32, nonce: uint256
+) -> bytes32:
     return keccak256(abi_encode(_from_domain, _to_domain, nonce))
-    
