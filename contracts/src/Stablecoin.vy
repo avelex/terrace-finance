@@ -17,17 +17,17 @@ from src.modules import withdrawal_queue
 
 initializes: withdrawal_queue[access_control := access]
 
-from src import Vault
-
-initializes: Vault[access := access]
+from src.modules import ledger
+initializes: ledger
 
 from src.modules import strategy_registry
 
 exports: (
     erc20.__interface__,
-    Vault.__interface__,
+    strategy_registry.__interface__,
     access.__interface__,
     withdrawal_queue.__interface__,
+    ledger.__interface__,
 )
 
 USDC: public(immutable(address))
@@ -59,9 +59,10 @@ def __init__(usdc: address, withdrawal_delay: uint256):
 
     ow.__init__()
     access.__init__()
-    withdrawal_queue.__init__(withdrawal_delay)
-    Vault.__init__()
     erc20.__init__("Terrace USD", "tUSD", 18, "Terrace Finance", "0x01")
+    withdrawal_queue.__init__(withdrawal_delay)
+    strategy_registry.__init__()
+    ledger.__init__(usdc)
 
 
 @external
@@ -74,7 +75,8 @@ def set_staking(staking: address):
 @external
 def deposit(amount: uint256):
     assert amount > 0
-    assert extcall IERC20(USDC).transferFrom(msg.sender, self, amount)
+    assert extcall IERC20(ledger.USDC).transferFrom(msg.sender, self, amount)
+    ledger._fill(amount)
     scaled_amount: uint256 = amount * 10**12
     erc20._mint(msg.sender, scaled_amount)
     log Deposit(user=msg.sender, amount=scaled_amount)
@@ -95,5 +97,6 @@ def execute_withdraw():
     )
     erc20._burn(self, req.amount)
     real_amount: uint256 = req.amount // 10**12
-    assert extcall IERC20(USDC).transfer(msg.sender, real_amount)
+    assert extcall IERC20(ledger.USDC).transfer(msg.sender, real_amount)
+    ledger._deplete(real_amount)
     log Withdraw(user=msg.sender, amount=real_amount)
