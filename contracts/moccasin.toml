@@ -7,20 +7,22 @@ dependencies = ["snekmate"]
 [networks.pyevm]
 is_zksync = false
 
-[networks.anvil]
-url = "http://127.0.0.1:8545"
-prompt_live = false
-save_to_db = false
-chain_id = 31337
+[networks.arc]
+url = "https://rpc.testnet.arc.network"
+explorer_uri = "https://testnet.arcscan.app/"
+explorer_type = "blockscout"
+chain_id = 5042002
+fork = false
 
-[networks.sepolia]
-url = "https://ethereum-sepolia-rpc.publicnode.com"
-chain_id = 11155111
+[networks.arc.contracts]
+usdc = {"address" = "0x3600000000000000000000000000000000000000"}
+messanger = {"address" = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"}
+transmitter = {"address" = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"}
 
-[networks.zksync-sepolia]
-url = "https://sepolia.era.zksync.dev"
-chain_id = 300
-is_zksync = true
-prompt_live = true
+[networks.arc.extra_data]
+withdrawal_delay = 30
+hub_domain = 26
 
-# You can view all configuration options at https://cyfrin.github.io/moccasin/all_moccasin_toml_parameters.html
+[networks.contracts]
+stablecoin = {  deployer_script = "script/deploy_stablecoin.py" }
+vault = {  deployer_script = "script/deploy_vault.py" }
