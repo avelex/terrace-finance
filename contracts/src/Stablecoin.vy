@@ -40,9 +40,7 @@ exports: (
     roles.__interface__,
 )
 
-USDC: public(immutable(address))
 staking: public(address)
-
 
 # @dev Emitted when the user deposits
 event Deposit:
@@ -68,11 +66,6 @@ def __init__(
     transmitter: address,
     hub_domain: uint32,
 ):
-    assert usdc != empty(address)
-    assert withdrawal_delay > 0
-
-    USDC = usdc
-
     ow.__init__()
     access.__init__()
     ledger.__init__(usdc)

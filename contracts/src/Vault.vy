@@ -1,18 +1,19 @@
 # pragma version ^0.4.3
 # @license MIT
+from src.modules import roles
 from snekmate.auth import access_control as access
 
 initializes: access
 
-from src.module import ledger
+from src.modules import ledger
 
 initializes: ledger
 
-from src.module import strategy_registry
+from src.modules import strategy_registry
 
 initializes: strategy_registry[access_control := access, ledger := ledger]
 
-from src.module import cctp
+from src.modules import cctp
 
 initializes: cctp[access_control := access, ledger := ledger]
 
@@ -21,8 +22,8 @@ exports: (
     access.__interface__,
     ledger.__interface__,
     cctp.__interface__,
+    roles.__interface__,
 )
-
 
 @deploy
 def __init__(
