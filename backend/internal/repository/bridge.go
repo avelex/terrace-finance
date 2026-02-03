@@ -32,7 +32,6 @@ func (r *BridgeRepository) CreateBridgeOp(ctx context.Context, send models.SendF
 
 func (r *BridgeRepository) CompleteBridgeOp(ctx context.Context, received models.ReceivedFunds) error {
 	_, err := r.db.NewUpdate().Model(new(models.BridgeOp)).
-		Set("to_chain_id = ?", received.ChainID.String()).
 		Set("received_amount = ?", received.Amount.String()).
 		Set("received_tx_hash = ?", received.TxHash.String()).
 		Set("received_at = ?", time.Unix(received.Timestamp, 0)).

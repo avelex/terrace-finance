@@ -3,7 +3,6 @@ package processor
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
@@ -52,9 +51,7 @@ func (p *Processor) process(ctx context.Context) error {
 	}
 
 	for _, v := range ops {
-		srcDomain := strconv.FormatUint(uint64(v.FromDomain), 10)
-
-		msg, att, err := p.client.MessageAndAttestation(ctx, srcDomain, v.SentTxHash)
+		msg, att, err := p.client.MessageAndAttestation(ctx, v.FromDomain, v.SentTxHash)
 		if err != nil {
 			log.Info().Str("event_id", v.ID).Msg("message and attestation not ready")
 			continue

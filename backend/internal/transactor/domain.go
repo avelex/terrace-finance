@@ -60,22 +60,57 @@ func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain
 }
 
 func (dt *DomainTransactor) ReceiveMessage(message, attestation []byte) (*types.Receipt, error) {
-	dt.lock.Lock()
-	defer dt.lock.Unlock()
-
-	tx, err := dt.transactor.ReceiveMessage(dt.opts, message, attestation)
+	receipt, err := dt.sendTransaction(context.Background(), "ReceiveMessage", func() (*types.Transaction, error) {
+		return dt.transactor.ReceiveMessage(dt.opts, message, attestation)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive message: %w", err)
 	}
 
-	txLog := dt.logger.With().
+	return receipt, nil
+}
+
+func (dt *DomainTransactor) SendAllFundsToHub(maxFee *big.Int, minFinalityThreshold uint32) (*types.Receipt, error) {
+	receipt, err := dt.sendTransaction(context.Background(), "SendAllToHub", func() (*types.Transaction, error) {
+		return dt.transactor.SendAllToHub(dt.opts, maxFee, minFinalityThreshold)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to send all funds to hub: %w", err)
+	}
+
+	return receipt, nil
+}
+
+func (dt *DomainTransactor) SendAllFundsToTerrace(domain uint32, maxFee *big.Int, minFinalityThreshold uint32) (*types.Receipt, error) {
+	receipt, err := dt.sendTransaction(context.Background(), "SendAllToTerrace", func() (*types.Transaction, error) {
+		return dt.transactor.SendAllToTerrace(dt.opts, domain, maxFee, minFinalityThreshold)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to send all funds to terrace: %w", err)
+	}
+
+	return receipt, nil
+}
+
+func (dt *DomainTransactor) sendTransaction(ctx context.Context, method string, txFunc func() (*types.Transaction, error)) (*types.Receipt, error) {
+	dt.lock.Lock()
+	defer dt.lock.Unlock()
+
+	methodLog := dt.logger.With().Str("method", method).Logger()
+	methodLog.Info().Msg("sending transaction")
+
+	tx, err := txFunc()
+	if err != nil {
+		return nil, fmt.Errorf("failed to send transaction: %w", err)
+	}
+
+	txLog := methodLog.With().
 		Str("tx_hash", tx.Hash().String()).
-		Str("method", "ReceiveMessage").
 		Logger()
 
 	txLog.Info().Msg("transaction sent, waiting for confirmation")
 
-	receipt, err := bind.WaitMined(context.Background(), dt.client, tx)
+	receipt, err := bind.WaitMined(ctx, dt.client, tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for receipt: %w", err)
 	}

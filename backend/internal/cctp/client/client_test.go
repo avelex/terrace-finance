@@ -14,8 +14,8 @@ func Test_Fees(t *testing.T) {
 	r := require.New(t)
 
 	cctpClient := client.NewClient()
-	ethereumDomain := "0"
-	baseDomain := "6"
+	ethereumDomain := uint32(0)
+	baseDomain := uint32(6)
 
 	fees, err := cctpClient.Fees(context.Background(), ethereumDomain, baseDomain)
 	r.NoError(err)
@@ -28,7 +28,7 @@ func Test_MessageAndAttestation(t *testing.T) {
 	r := require.New(t)
 
 	cctpClient := client.NewClient()
-	srcDomain := "6"
+	srcDomain := uint32(6)
 	txHash := "0x9ce60a2cbf89c6dfe6d8535a6bea086417318859e0acdf93ff8afdd2a925e206"
 
 	message, attestation, err := cctpClient.MessageAndAttestation(context.Background(), srcDomain, txHash)

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 
 	"go.uber.org/ratelimit"
 )
@@ -36,7 +37,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) Fees(ctx context.Context, srcDomain, dstDomain string) (Fees, error) {
+func (c *Client) Fees(ctx context.Context, srcDomain, dstDomain uint32) (Fees, error) {
 	u := buildFeesURL(srcDomain, dstDomain)
 
 	out := Fees{}
@@ -47,7 +48,7 @@ func (c *Client) Fees(ctx context.Context, srcDomain, dstDomain string) (Fees, e
 	return out, nil
 }
 
-func (c *Client) MessageAndAttestation(ctx context.Context, srcDomain, txHash string) (string, string, error) {
+func (c *Client) MessageAndAttestation(ctx context.Context, srcDomain uint32, txHash string) (string, string, error) {
 	u := buildMessageAndAttestationURL(srcDomain, txHash)
 
 	out := messagesResponse{}
@@ -91,13 +92,13 @@ func (c *Client) doRequest(ctx context.Context, url string, method string, out a
 	}
 }
 
-func buildFeesURL(srcDomain, dstDomain string) string {
-	p := path.Join(feesPath, srcDomain, dstDomain)
+func buildFeesURL(srcDomain, dstDomain uint32) string {
+	p := path.Join(feesPath, strconv.FormatUint(uint64(srcDomain), 10), strconv.FormatUint(uint64(dstDomain), 10))
 	return buildURL(p)
 }
 
-func buildMessageAndAttestationURL(srcDomain, txHash string) string {
-	p := path.Join(messagesPath, srcDomain)
+func buildMessageAndAttestationURL(srcDomain uint32, txHash string) string {
+	p := path.Join(messagesPath, strconv.FormatUint(uint64(srcDomain), 10))
 	params := url.Values{}
 	params.Set("transactionHash", txHash)
 	return buildURL(p + "?" + params.Encode())

@@ -12,10 +12,8 @@ type BridgeOp struct {
 	ID             string `bun:"id,pk"`
 	FromTerrace    string `bun:"from_terrace,notnull"`
 	FromDomain     uint32 `bun:"from_domain,notnull"`
-	FromChainID    string `bun:"from_chain_id,notnull"`
 	ToTerrace      string `bun:"to_terrace,notnull"`
 	ToDomain       uint32 `bun:"to_domain,notnull"`
-	ToChainID      string `bun:"to_chain_id,nullzero"`
 	SendAmount     string `bun:"send_amount,notnull"`
 	ReceivedAmount string `bun:"received_amount,nullzero"`
 	SentTxHash     string `bun:"sent_tx_hash,notnull"`

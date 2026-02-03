@@ -9,10 +9,13 @@ import (
 
 	"github.com/avelex/terrace-finance/backend/config"
 	"github.com/avelex/terrace-finance/backend/db"
+	"github.com/avelex/terrace-finance/backend/internal/api"
 	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
 	"github.com/avelex/terrace-finance/backend/internal/cctp/processor"
 	"github.com/avelex/terrace-finance/backend/internal/event_handler"
+	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 	"github.com/avelex/terrace-finance/backend/internal/repository"
+	"github.com/avelex/terrace-finance/backend/internal/strategy"
 	"github.com/avelex/terrace-finance/backend/internal/transactor"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -23,6 +26,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
+
+	"github.com/labstack/echo/v4"
 )
 
 func main() {
@@ -68,14 +73,26 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("connect to eventscale: %w", err)
 	}
 
+	cctpClient := cctp_client.NewClient()
+
 	repo := repository.NewBridgeRepository(bunDB)
+	aaveRepo := repository.NewAaveRepository(bunDB)
 
-	handler := event_handler.NewHandler(repo)
-	processor := processor.New(cctp_client.NewClient(), repo)
-	transactor := transactor.NewTransactor(domains, repo)
+	manager := strategy.NewManager(aaveRepo)
 
-	sub, err := eventscale.SubscribeEventBlock(ectx, handler.Handle,
-		eventscale.WithEventBlockConsumerName("terrace-github.com/avelex/terrace-finance/backend"),
+	eventHandler := event_handler.NewEventHandler(repo, manager)
+	processor := processor.New(cctpClient, repo)
+	transactor := transactor.NewTransactor(enum.ARC_DOMAIN, domains, repo, cctpClient)
+
+	apiHandler := api.NewHandler(transactor)
+
+	echoRouter := echo.New()
+	apiGroup := echoRouter.Group("/api")
+
+	apiHandler.Register(apiGroup)
+
+	terraceSub, err := eventscale.SubscribeEventBlock(ectx, eventHandler.Handle,
+		eventscale.WithEventBlockConsumerName("terrace-operator"),
 	)
 	if err != nil {
 		return fmt.Errorf("subscribe to eventscale: %w", err)
@@ -85,10 +102,10 @@ func run(ctx context.Context) error {
 	wg.Add(3)
 
 	go func() {
-		log.Info().Msg("subscribed to eventscale")
+		log.Info().Msg("subscribed to terrace contracts")
 
 		defer wg.Done()
-		sub.Start(ctx)
+		terraceSub.Start(ctx)
 	}()
 
 	go func() {
@@ -103,6 +120,13 @@ func run(ctx context.Context) error {
 
 		defer wg.Done()
 		transactor.Start(ctx)
+	}()
+
+	go func() {
+		log.Info().Msg("started API server")
+
+		defer wg.Done()
+		echoRouter.Start(":8080")
 	}()
 
 	<-ctx.Done()
