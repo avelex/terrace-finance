@@ -1,6 +1,9 @@
 # pragma version ^0.4.3
 # @license MIT
 from ethereum.ercs import IERC4626
+from snekmate.tokens import erc20
+
+uses: erc20
 
 from src.modules import vault
 
@@ -12,7 +15,15 @@ uses: cctp
 
 
 interface IGatewayMinter:
-    def gatewayMint(attestation: Bytes[1024], signature: Bytes[65]): nonpayable
+    def gatewayMint(attestation: Bytes[1528], signature: Bytes[65]): nonpayable
+
+
+# @dev AttestationSet struct
+# Byte encoding (big-endian):
+#     FIELD                      OFFSET   BYTES   NOTES
+#     magic                           0       4   Always 0x1e12db71
+#     number of attestations          4       4
+#     attestations                    8       ?   Concatenated one after another
 
 
 # @dev Byte encoding (big-endian):
@@ -24,8 +35,8 @@ interface IGatewayMinter:
 struct Attestation:
     magic: Bytes[4]
     max_block_height: uint256
-    transfer_spec_length: uint256
-    encoded_transfer_spec: Bytes[1024]
+    transfer_spec_length: uint32
+    encoded_transfer_spec: Bytes[340]
 
 
 # @dev Byte encoding (big-endian):
@@ -61,13 +72,19 @@ struct TransferSpec:
     value: uint256
     salt: bytes32
     hook_data_length: uint32
-    # hook_data: Bytes[1024]
 
 
 GATEWAY_MINTER: public(immutable(address))
 
+# bytes4(keccak256("circle.gateway.AttestationSet"))
+_ATTESTATION_SET_MAGIC: constant(Bytes[4]) = x"1e12db71"
+# bytes4(keccak256("circle.gateway.Attestation"))
 _ATTESTATION_MAGIC: constant(Bytes[4]) = x"ff6fb334"
+# bytes4(keccak256("circle.gateway.TransferSpec"))
 _TRANSFER_SPEC_MAGIC: constant(Bytes[4]) = x"ca85def7"
+# max number of attestations
+_MAX_ATTESTATIONS: constant(uint256) = 4
+_ATTESTATION_LENGTH: constant(uint256) = 380
 
 
 @deploy
@@ -77,25 +94,61 @@ def __init__(gateway_minter: address):
 
 
 @external
-def gateway_deposit_and_stake(attestation: Bytes[1024], signature: Bytes[65]):
-    transfer: TransferSpec = self._decode_transfer_spec(attestation)
+def gateway_deposit_and_stake(attestation: Bytes[1528], signature: Bytes[65]):
+    transfers: DynArray[
+        TransferSpec, _MAX_ATTESTATIONS
+    ] = self._decode_attestation(attestation)
     extcall IGatewayMinter(GATEWAY_MINTER).gatewayMint(attestation, signature)
 
-    if cctp._is_hub():
-        deposited: uint256 = vault._deposit(transfer.value)
-        extcall IERC4626(vault.staking).deposit(
-            deposited, transfer.destination_recipient
+    for transfer: TransferSpec in transfers:
+        if cctp._is_hub() and transfer.destination_recipient == self:
+            deposited: uint256 = vault._deposit(self, transfer.value)
+            erc20._approve(self, vault.staking, deposited)
+            extcall IERC4626(vault.staking).deposit(
+                deposited, transfer.source_depositor
+            )
+
+
+@external
+def decode_attestation(attestation: Bytes[1528]) -> DynArray[TransferSpec, _MAX_ATTESTATIONS]:
+    return self._decode_attestation(attestation)
+
+
+def _decode_attestation(
+    attestation: Bytes[1528],
+) -> DynArray[TransferSpec, _MAX_ATTESTATIONS]:
+    magic: Bytes[4] = slice(attestation, 0, 4)
+    transfers: DynArray[TransferSpec, _MAX_ATTESTATIONS] = empty(
+        DynArray[TransferSpec, _MAX_ATTESTATIONS]
+    )
+
+    if magic == _ATTESTATION_SET_MAGIC:
+        number_of_attestations: uint256 = convert(
+            slice(attestation, 4, 4), uint256
         )
+        #attestation_set: Bytes[1520] = slice(attestation, 8, _MAX_ATTESTATIONS * _ATTESTATION_LENGTH)
+
+        for i: uint256 in range(
+            number_of_attestations, bound=_MAX_ATTESTATIONS
+        ):
+            # 8 bytes is offset of attestation set metadata.
+            attestation_payload: Bytes[380] = slice(attestation, 8 + i * _ATTESTATION_LENGTH, _ATTESTATION_LENGTH)
+            transfers.append(self._decode_transfer_spec(attestation_payload))
+    elif magic == _ATTESTATION_MAGIC:
+        attestation_payload: Bytes[380] = slice(attestation, 0, _ATTESTATION_LENGTH)
+        transfers.append(self._decode_transfer_spec(attestation_payload))
+    else:
+        raise "unknown circle attestation payload"
+
+    return transfers
 
 
-def _decode_transfer_spec(attestation: Bytes[1024]) -> TransferSpec:
+def _decode_transfer_spec(attestation: Bytes[380]) -> TransferSpec:
     attestation_magic: Bytes[4] = slice(attestation, 0, 4)
     assert attestation_magic == _ATTESTATION_MAGIC
 
-    transfer_spec_length: uint256 = convert(slice(attestation, 36, 4), uint256)
-    encoded_transfer_spec: Bytes[1024] = slice(
-        attestation, 40, transfer_spec_length
-    )
+    # transfer spec length is 340 bytes, without hook data
+    encoded_transfer_spec: Bytes[340] = slice(attestation, 40, 340)
 
     transfer_spec_magic: Bytes[4] = slice(encoded_transfer_spec, 0, 4)
     assert transfer_spec_magic == _TRANSFER_SPEC_MAGIC

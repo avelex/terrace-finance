@@ -52,7 +52,7 @@ def set_staking(staking: address):
 def deposit(amount: uint256):
     assert amount > 0
     assert extcall IERC20(ledger.USDC).transferFrom(msg.sender, self, amount)
-    self._deposit(amount)
+    self._deposit(msg.sender, amount)
 
 
 @external
@@ -86,9 +86,9 @@ def distribute_fees():
 
 
 @internal
-def _deposit(amount: uint256) -> uint256:
+def _deposit(to: address, amount: uint256) -> uint256:
     ledger._fill(amount)
     scaled_amount: uint256 = amount * 10**12
-    erc20._mint(msg.sender, scaled_amount)
-    log Deposit(user=msg.sender, amount=scaled_amount)
+    erc20._mint(to, scaled_amount)
+    log Deposit(user=to, amount=scaled_amount)
     return scaled_amount

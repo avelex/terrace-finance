@@ -36,7 +36,7 @@ initializes: vault[access_control := access, erc20 := erc20, ledger := ledger, w
 
 from src.modules import gateway
 
-initializes: gateway[vault := vault, cctp := cctp]
+initializes: gateway[vault := vault, erc20 := erc20, cctp := cctp]
 
 exports: (
     erc20.__interface__,
