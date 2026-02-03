@@ -1,4 +1,4 @@
-package cctp
+package client
 
 import (
 	"context"

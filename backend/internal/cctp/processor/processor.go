@@ -6,23 +6,23 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/avelex/terrace-finance/backend/internal/extclients/cctp"
+	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
 	"github.com/avelex/terrace-finance/backend/internal/models"
 
 	"github.com/rs/zerolog/log"
 )
 
 type Repository interface {
-	GetPendingOps(ctx context.Context) ([]models.BridgeOp, error)
+	GetSendingOps(ctx context.Context) ([]models.BridgeOp, error)
 	UpdateMessageAndAttestation(ctx context.Context, id, message, attestation string) error
 }
 
 type Processor struct {
-	client *cctp.Client
+	client *cctp_client.Client
 	repo   Repository
 }
 
-func New(client *cctp.Client, repo Repository) *Processor {
+func New(client *cctp_client.Client, repo Repository) *Processor {
 	return &Processor{
 		client: client,
 		repo:   repo,
@@ -46,9 +46,9 @@ func (p *Processor) Start(ctx context.Context) {
 }
 
 func (p *Processor) process(ctx context.Context) error {
-	ops, err := p.repo.GetPendingOps(ctx)
+	ops, err := p.repo.GetSendingOps(ctx)
 	if err != nil {
-		return fmt.Errorf("get pending ops: %w", err)
+		return fmt.Errorf("get sending ops: %w", err)
 	}
 
 	for _, v := range ops {
@@ -56,7 +56,7 @@ func (p *Processor) process(ctx context.Context) error {
 
 		msg, att, err := p.client.MessageAndAttestation(ctx, srcDomain, v.SentTxHash)
 		if err != nil {
-			log.Error().Err(err).Msg("message and attestation")
+			log.Info().Str("event_id", v.ID).Msg("message and attestation not ready")
 			continue
 		}
 

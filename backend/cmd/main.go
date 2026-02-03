@@ -9,11 +9,14 @@ import (
 
 	"github.com/avelex/terrace-finance/backend/config"
 	"github.com/avelex/terrace-finance/backend/db"
+	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
 	"github.com/avelex/terrace-finance/backend/internal/cctp/processor"
 	"github.com/avelex/terrace-finance/backend/internal/event_handler"
-	"github.com/avelex/terrace-finance/backend/internal/extclients/cctp"
 	"github.com/avelex/terrace-finance/backend/internal/repository"
+	"github.com/avelex/terrace-finance/backend/internal/transactor"
 
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	eventscale "github.com/eventscale/eventscale/pkg/sdk-go"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -36,9 +39,14 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	conf, err := config.Load()
+	conf, err := config.Load("config.yaml")
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
+	}
+
+	domains, err := connectDomainTransactors(ctx, conf)
+	if err != nil {
+		return fmt.Errorf("connect domain transactors: %w", err)
 	}
 
 	pgPool, err := pgxpool.New(ctx, conf.DB)
@@ -60,19 +68,21 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("connect to eventscale: %w", err)
 	}
 
-	bridgeRepo := repository.NewBridgeRepository(bunDB)
-	handler := event_handler.NewHandler(bridgeRepo)
-	processor := processor.New(cctp.NewClient(), bridgeRepo)
+	repo := repository.NewBridgeRepository(bunDB)
+
+	handler := event_handler.NewHandler(repo)
+	processor := processor.New(cctp_client.NewClient(), repo)
+	transactor := transactor.NewTransactor(domains, repo)
 
 	sub, err := eventscale.SubscribeEventBlock(ectx, handler.Handle,
-		eventscale.WithEventBlockConsumerName("terrace-operator"),
+		eventscale.WithEventBlockConsumerName("terrace-github.com/avelex/terrace-finance/backend"),
 	)
 	if err != nil {
 		return fmt.Errorf("subscribe to eventscale: %w", err)
 	}
 
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
 
 	go func() {
 		log.Info().Msg("subscribed to eventscale")
@@ -88,8 +98,41 @@ func run(ctx context.Context) error {
 		processor.Start(ctx)
 	}()
 
+	go func() {
+		log.Info().Msg("started transactor")
+
+		defer wg.Done()
+		transactor.Start(ctx)
+	}()
+
 	<-ctx.Done()
 	wg.Wait()
 
 	return nil
+}
+
+func connectDomainTransactors(ctx context.Context, cfg config.Config) (map[uint32]*transactor.DomainTransactor, error) {
+	pk, err := crypto.HexToECDSA(cfg.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("load private key: %w", err)
+	}
+
+	transactors := make(map[uint32]*transactor.DomainTransactor)
+
+	for _, network := range cfg.Networks {
+		client, err := ethclient.DialContext(ctx, network.URL)
+		if err != nil {
+			return nil, fmt.Errorf("connect to %s: %w", network.Name, err)
+		}
+
+		transactor, err := transactor.NewDomainTransactor(pk, client, network.Domain, network.Contract)
+		if err != nil {
+			return nil, fmt.Errorf("create transactor for %s: %w", network.Name, err)
+		}
+
+		transactors[network.Domain] = transactor
+	}
+
+	return transactors, nil
+
 }

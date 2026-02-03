@@ -35,7 +35,7 @@ func (s SendFunds) BridgeOp() BridgeOp {
 }
 
 type ReceivedFunds struct {
-	ID          common.Hash    `json:"id"`
+	ID          [32]byte       `json:"id"`
 	FromTerrace common.Address `json:"fromTerrace"`
 	FromDomain  uint32         `json:"fromDomain"`
 	ToTerrace   common.Address `json:"toTerrace"`

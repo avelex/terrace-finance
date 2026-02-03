@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/avelex/terrace-finance/backend/internal/models"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 
 	eventscale "github.com/eventscale/eventscale/pkg/sdk-go"
@@ -25,8 +27,6 @@ func NewHandler(repo Repository) *Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, block eventscale.EventBlock) error {
-	log.Info().Msgf("%s received block: %d events: %d", block.Network, block.BlockNumber, len(block.Events))
-
 	for _, v := range block.Events {
 		switch v.MetaData.Name {
 		case "SendFunds":
@@ -68,13 +68,21 @@ func (h *Handler) Handle(ctx context.Context, block eventscale.EventBlock) error
 }
 
 func (h *Handler) handleSendFunds(ctx context.Context, event models.SendFunds) error {
-	log.Info().Msgf("received SendFunds event: %s", event.TxHash.String())
+	log.Info().
+		Str("event_id", common.BytesToHash(event.ID[:]).String()).
+		Str("tx_hash", event.TxHash.String()).
+		Uint32("domain", event.FromDomain).
+		Msgf("received SendFunds")
 
 	return h.repo.CreateBridgeOp(ctx, event)
 }
 
 func (h *Handler) handleReceivedFunds(ctx context.Context, event models.ReceivedFunds) error {
-	log.Info().Msgf("received ReceivedFunds event: %s", event.TxHash.String())
+	log.Info().
+		Str("event_id", common.BytesToHash(event.ID[:]).String()).
+		Str("tx_hash", event.TxHash.String()).
+		Uint32("domain", event.ToDomain).
+		Msgf("received ReceivedFunds")
 
 	return h.repo.CompleteBridgeOp(ctx, event)
 }
