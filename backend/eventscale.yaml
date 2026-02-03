@@ -1,0 +1,32 @@
+version: 1
+nats:
+  path: /eventscale/conf/nats.conf
+system:
+  block_extractor:
+    disabled: true
+networks:
+  - name: base
+    rpc: https://rpc.ankr.com/base
+    rate_limit:
+      per: 1s
+      limit: 5
+    blocks_proc:
+      batch_limit: 50
+      interval: 2s
+      start_from: 40850490
+  - name: arbitrum
+    rpc: https://rpc.ankr.com/arbitrum
+    rate_limit:
+      per: 1s
+      limit: 5
+    blocks_proc:
+      batch_limit: 50
+      interval: 1s
+events:
+  - name: SendFunds
+    signature: event SendFunds(bytes32 id, address fromTerrace, uint32 fromDomain, address toTerrace, uint32 toDomain, uint256 amount)
+    networks:
+  - name: ReceivedFunds
+    signature: event ReceivedFunds(bytes32 id, address fromTerrace, uint32 fromDomain, address toTerrace, uint32 toDomain, uint256 amount)
+    networks:
+
