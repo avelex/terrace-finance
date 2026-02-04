@@ -16,38 +16,66 @@ const (
 	ARBITRUM_DOMAIN CircleDomain = 3
 	BASE_DOMAIN     CircleDomain = 6
 	POLYGON_DOMAIN  CircleDomain = 7
-	SONIC_DOMAIN    CircleDomain = 13
 	ARC_DOMAIN      CircleDomain = 26
 )
 
+const (
+	ETHEREUM_NETWORK = "ethereum"
+	ARBITRUM_NETWORK = "arbitrum"
+	BASE_NETWORK     = "base"
+	ARC_NETWORK      = "arc"
+	POLYGON_NETWORK  = "polygon"
+	OPTIMISM_NETWORK = "optimism"
+	AVAX_NETWORK     = "avalanche"
+)
+
 var USDC_MAPPING = map[string]common.Address{
-	"base":     common.HexToAddress("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"),
-	"arbitrum": common.HexToAddress("0xaf88d065e77c8cC2239327C5EDb3A432268e5831"),
+	BASE_NETWORK:     common.HexToAddress("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"),
+	ARBITRUM_NETWORK: common.HexToAddress("0xaf88d065e77c8cC2239327C5EDb3A432268e5831"),
+	POLYGON_NETWORK:  common.HexToAddress("0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"),
+	OPTIMISM_NETWORK: common.HexToAddress("0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"),
+	AVAX_NETWORK:     common.HexToAddress("0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"),
+	ARC_NETWORK:      common.HexToAddress("0x3600000000000000000000000000000000000000"),
+	ETHEREUM_NETWORK: common.HexToAddress("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
+}
+
+var GATEWAY_WALLET_MAPPING = map[string]common.Address{
+	BASE_NETWORK:     common.HexToAddress("0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"),
+	ARBITRUM_NETWORK: common.HexToAddress("0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"),
+	POLYGON_NETWORK:  common.HexToAddress("0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"),
+	OPTIMISM_NETWORK: common.HexToAddress("0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"),
+	AVAX_NETWORK:     common.HexToAddress("0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"),
+	ARC_NETWORK:      common.HexToAddress("0x0077777d7EBA4688BDeF3E311b846F25870A19B9"),
+	ETHEREUM_NETWORK: common.HexToAddress("0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"),
+}
+
+var GATEWAY_MINT_MAPPING = map[string]common.Address{
+	ARC_NETWORK: common.HexToAddress("0x0022222ABE238Cc2C7Bb1f21003F0a260052475B"),
 }
 
 var AAVE_V3 = map[string]common.Address{
-	"base":     common.HexToAddress("0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"),
-	"arbitrum": common.HexToAddress("0x794a61358D6845594F94dc1DB02A252b5b4814aD"),
+	BASE_NETWORK:     common.HexToAddress("0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"),
+	ARBITRUM_NETWORK: common.HexToAddress("0x794a61358D6845594F94dc1DB02A252b5b4814aD"),
 }
 
 var DomainNetworkMapping = map[CircleDomain]string{
-	ETHEREUM_DOMAIN: "ethereum",
-	AVAX_DOMAIN:     "avalanche",
-	OPTIMISM_DOMAIN: "optimism",
-	ARBITRUM_DOMAIN: "arbitrum",
-	BASE_DOMAIN:     "base",
-	POLYGON_DOMAIN:  "polygon",
-	SONIC_DOMAIN:    "sonic",
+	ETHEREUM_DOMAIN: ETHEREUM_NETWORK,
+	AVAX_DOMAIN:     AVAX_NETWORK,
+	OPTIMISM_DOMAIN: OPTIMISM_NETWORK,
+	ARBITRUM_DOMAIN: ARBITRUM_NETWORK,
+	BASE_DOMAIN:     BASE_NETWORK,
+	POLYGON_DOMAIN:  POLYGON_NETWORK,
+	ARC_DOMAIN:      ARC_NETWORK,
 }
 
 var NetworkDomainMapping = map[string]CircleDomain{
-	"ethereum":  ETHEREUM_DOMAIN,
-	"avalanche": AVAX_DOMAIN,
-	"optimism":  OPTIMISM_DOMAIN,
-	"arbitrum":  ARBITRUM_DOMAIN,
-	"base":      BASE_DOMAIN,
-	"polygon":   POLYGON_DOMAIN,
-	"sonic":     SONIC_DOMAIN,
+	ETHEREUM_NETWORK: ETHEREUM_DOMAIN,
+	AVAX_NETWORK:     AVAX_DOMAIN,
+	OPTIMISM_NETWORK: OPTIMISM_DOMAIN,
+	ARBITRUM_NETWORK: ARBITRUM_DOMAIN,
+	BASE_NETWORK:     BASE_DOMAIN,
+	POLYGON_NETWORK:  POLYGON_DOMAIN,
+	ARC_NETWORK:      ARC_DOMAIN,
 }
 
 func NetworkByDomain(domain CircleDomain) string {
@@ -56,4 +84,15 @@ func NetworkByDomain(domain CircleDomain) string {
 
 func DomainByNetwork(network string) CircleDomain {
 	return NetworkDomainMapping[network]
+}
+
+func SupportedDomains() []CircleDomain {
+	return []CircleDomain{
+		ETHEREUM_DOMAIN,
+		AVAX_DOMAIN,
+		OPTIMISM_DOMAIN,
+		ARBITRUM_DOMAIN,
+		BASE_DOMAIN,
+		POLYGON_DOMAIN,
+	}
 }

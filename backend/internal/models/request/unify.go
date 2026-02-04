@@ -1,5 +1,7 @@
 package request
 
+import "github.com/avelex/terrace-finance/backend/internal/models/enum"
+
 type UnifyBalances struct {
-	Networks []uint32 `json:"networks"`
+	Domains []enum.CircleDomain `json:"domains"`
 }

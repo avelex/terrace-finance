@@ -1,5 +1,8 @@
 package response
 
+import "github.com/avelex/terrace-finance/backend/internal/models/enum"
+
 type PermitPayload struct {
-	Networks map[uint32]string `json:"networks"`
+	ID      string                       `json:"id"`
+	Domains map[enum.CircleDomain]string `json:"domains"`
 }

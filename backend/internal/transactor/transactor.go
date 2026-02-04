@@ -15,22 +15,31 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Repository interface {
+type BridgeRepository interface {
 	GetPendingOps(ctx context.Context) ([]models.BridgeOp, error)
 	UpdateReceivedTxHash(ctx context.Context, id string, txHash common.Hash) error
+}
+
+type UserRepository interface {
+	GetPendingPermitDeposits(ctx context.Context) ([]models.UserUnifiedPermits, error)
+	UpdatePermitDepositTxHash(ctx context.Context, id string, owner common.Address, domain uint32, txHash common.Hash) error
+	GetPendingHubDeposits(ctx context.Context) ([]models.UserDeposit, error)
+	UpdateDepositTxHash(ctx context.Context, id string, txHash common.Hash) error
 }
 
 type Transactor struct {
 	hubDomain enum.CircleDomain
 	domains   map[enum.CircleDomain]*DomainTransactor
-	repo      Repository
+	brideRepo BridgeRepository
+	userRepo  UserRepository
 }
 
-func NewTransactor(hubDomain enum.CircleDomain, domains map[enum.CircleDomain]*DomainTransactor, repo Repository) *Transactor {
+func NewTransactor(hubDomain enum.CircleDomain, domains map[enum.CircleDomain]*DomainTransactor, br BridgeRepository, ur UserRepository) *Transactor {
 	return &Transactor{
 		hubDomain: hubDomain,
 		domains:   domains,
-		repo:      repo,
+		brideRepo: br,
+		userRepo:  ur,
 	}
 }
 
@@ -60,7 +69,7 @@ func (t *Transactor) TerraceBalance(ctx context.Context, domain enum.CircleDomai
 }
 
 func (t *Transactor) TerraceAddress(domain enum.CircleDomain) common.Address {
-	return t.domains[domain].contract
+	return t.domains[domain].vaultAddress
 }
 
 func (t *Transactor) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain, maxFee *big.Int) (string, error) {
@@ -103,7 +112,23 @@ func (t *Transactor) BatchExecute(ctx context.Context, domain enum.CircleDomain,
 }
 
 func (t *Transactor) process(ctx context.Context) error {
-	ops, err := t.repo.GetPendingOps(ctx)
+	if err := t.processPendingBridgeOps(ctx); err != nil {
+		return fmt.Errorf("process pending bridge ops: %w", err)
+	}
+
+	if err := t.processGatewayDeposits(ctx); err != nil {
+		return fmt.Errorf("process gateway deposits: %w", err)
+	}
+
+	if err := t.processGatewayMints(ctx); err != nil {
+		return fmt.Errorf("process gateway mints: %w", err)
+	}
+
+	return nil
+}
+
+func (t *Transactor) processPendingBridgeOps(ctx context.Context) error {
+	ops, err := t.brideRepo.GetPendingOps(ctx)
 	if err != nil {
 		return fmt.Errorf("get pending ops: %w", err)
 	}
@@ -131,7 +156,7 @@ func (t *Transactor) process(ctx context.Context) error {
 				return
 			}
 
-			if err := t.repo.UpdateReceivedTxHash(ctx, op.ID, receipt.TxHash); err != nil {
+			if err := t.brideRepo.UpdateReceivedTxHash(ctx, op.ID, receipt.TxHash); err != nil {
 				log.Error().Err(err).Msg("update received tx hash failed")
 				return
 			}
@@ -139,6 +164,91 @@ func (t *Transactor) process(ctx context.Context) error {
 	}
 
 	wg.Wait()
+
+	return nil
+}
+
+func (t *Transactor) processGatewayDeposits(ctx context.Context) error {
+	ops, err := t.userRepo.GetPendingPermitDeposits(ctx)
+	if err != nil {
+		return fmt.Errorf("get pending permit deposits: %w", err)
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(len(ops))
+
+	for _, op := range ops {
+		go func(op models.UserUnifiedPermits) {
+			defer wg.Done()
+
+			domain := enum.CircleDomain(op.Domain)
+			token := common.HexToAddress(op.Token)
+			owner := common.HexToAddress(op.Owner)
+			deadline := new(big.Int).SetInt64(op.Deadline)
+
+			amount, ok := new(big.Int).SetString(op.Value, 10)
+			if !ok {
+				log.Error().Msg("unable to parse amount")
+				return
+			}
+
+			sig, err := hexutil.Decode(op.Signature)
+			if err != nil {
+				log.Error().Err(err).Msg("unable to decode signature")
+				return
+			}
+
+			receipt, err := t.domains[domain].DepositWithPermit(token, owner, amount, deadline, sig)
+			if err != nil {
+				log.Error().Err(err).Msg("deposit with permit failed")
+				return
+			}
+
+			if err := t.userRepo.UpdatePermitDepositTxHash(ctx, op.DepositID.String(), owner, uint32(domain), receipt.TxHash); err != nil {
+				log.Error().Err(err).Msg("update permit deposit tx hash failed")
+				return
+			}
+		}(op)
+	}
+
+	wg.Wait()
+
+	return nil
+}
+
+func (t *Transactor) processGatewayMints(ctx context.Context) error {
+	mints, err := t.userRepo.GetPendingHubDeposits(ctx)
+	if err != nil {
+		return fmt.Errorf("get pending hub deposits: %w", err)
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(len(mints))
+
+	for _, deposit := range mints {
+		attestation, err := hexutil.Decode(deposit.Attestation)
+		if err != nil {
+			log.Error().Err(err).Msg("unable to decode attestation")
+			return err
+		}
+
+		sig, err := hexutil.Decode(deposit.Signature)
+		if err != nil {
+			log.Error().Err(err).Msg("unable to decode signature")
+			return err
+		}
+
+		receipt, err := t.domains[t.hubDomain].GatewayMint(attestation, sig)
+		if err != nil {
+			log.Error().Err(err).Msg("gateway mint failed")
+			return err
+		}
+
+		if err := t.userRepo.UpdateDepositTxHash(ctx, deposit.ID.String(), receipt.TxHash); err != nil {
+			log.Error().Err(err).Msg("update deposit tx hash failed")
+			return err
+		}
+	}
 
 	return nil
 }

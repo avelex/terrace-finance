@@ -11,15 +11,18 @@ import (
 	"github.com/avelex/terrace-finance/backend/db"
 	"github.com/avelex/terrace-finance/backend/internal/api"
 	cctp_client "github.com/avelex/terrace-finance/backend/internal/circle/cctp/client"
-	"github.com/avelex/terrace-finance/backend/internal/circle/cctp/processor"
+	cctp_processor "github.com/avelex/terrace-finance/backend/internal/circle/cctp/processor"
+	gateway_client "github.com/avelex/terrace-finance/backend/internal/circle/gateway/client"
 	"github.com/avelex/terrace-finance/backend/internal/event_handler"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 	"github.com/avelex/terrace-finance/backend/internal/repository"
-	"github.com/avelex/terrace-finance/backend/internal/strategy"
+	"github.com/avelex/terrace-finance/backend/internal/services/network"
+	"github.com/avelex/terrace-finance/backend/internal/services/strategy"
+	"github.com/avelex/terrace-finance/backend/internal/services/wallet"
 	"github.com/avelex/terrace-finance/backend/internal/transactor"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	eventscale "github.com/eventscale/eventscale/pkg/sdk-go"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -49,11 +52,6 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	domains, err := connectDomainTransactors(ctx, conf)
-	if err != nil {
-		return fmt.Errorf("connect domain transactors: %w", err)
-	}
-
 	pgPool, err := pgxpool.New(ctx, conf.DB)
 	if err != nil {
 		log.Fatal().Err(err).Msg("connect to db")
@@ -74,17 +72,31 @@ func run(ctx context.Context) error {
 	}
 
 	cctpClient := cctp_client.NewClient()
+	gatewayClient := gateway_client.NewClient()
 
 	repo := repository.NewBridgeRepository(bunDB)
 	aaveRepo := repository.NewAaveRepository(bunDB)
 	strategyRepo := repository.NewStrategyRepository(bunDB)
+	userRepo := repository.NewUserRepository(bunDB)
 
-	processor := processor.New(cctpClient, repo)
-	transactor := transactor.NewTransactor(enum.ARC_DOMAIN, domains, repo)
-	manager := strategy.NewManager(transactor, aaveRepo, strategyRepo, cctpClient)
-	eventHandler := event_handler.NewEventHandler(repo, manager)
+	networkService, err := network.NewService(ctx, conf)
+	if err != nil {
+		return fmt.Errorf("create network service: %w", err)
+	}
 
-	apiHandler := api.NewHandler(manager, nil)
+	domains, err := connectDomainTransactors(conf, networkService)
+	if err != nil {
+		return fmt.Errorf("connect domain transactors: %w", err)
+	}
+
+	cctpProcessor := cctp_processor.New(cctpClient, repo)
+	transactor := transactor.NewTransactor(enum.ARC_DOMAIN, domains, repo, userRepo)
+
+	walletService := wallet.NewService(conf.Protocol, gatewayClient, networkService, userRepo)
+	strategyService := strategy.NewService(transactor, aaveRepo, strategyRepo, cctpClient)
+	eventHandler := event_handler.NewEventHandler(repo, strategyService)
+
+	apiHandler := api.NewHandler(strategyService, walletService)
 
 	echoRouter := echo.New()
 	apiGroup := echoRouter.Group("/api")
@@ -112,7 +124,7 @@ func run(ctx context.Context) error {
 		log.Info().Msg("started CCTP processor")
 
 		defer wg.Done()
-		processor.Start(ctx)
+		cctpProcessor.Start(ctx)
 	}()
 
 	go func() {
@@ -135,7 +147,7 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func connectDomainTransactors(ctx context.Context, cfg config.Config) (map[enum.CircleDomain]*transactor.DomainTransactor, error) {
+func connectDomainTransactors(cfg config.Config, svc *network.Service) (map[enum.CircleDomain]*transactor.DomainTransactor, error) {
 	pk, err := crypto.HexToECDSA(cfg.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("load private key: %w", err)
@@ -144,12 +156,19 @@ func connectDomainTransactors(ctx context.Context, cfg config.Config) (map[enum.
 	transactors := make(map[enum.CircleDomain]*transactor.DomainTransactor)
 
 	for _, network := range cfg.Networks {
-		client, err := ethclient.DialContext(ctx, network.URL)
+		client, err := svc.Client(network.Name)
 		if err != nil {
 			return nil, fmt.Errorf("connect to %s: %w", network.Name, err)
 		}
 
-		transactor, err := transactor.NewDomainTransactor(pk, client, network.Domain, network.Contract)
+		gatewayWallet := enum.GATEWAY_WALLET_MAPPING[network.Name]
+		gatewayMint := common.Address{}
+
+		if network.Domain == uint32(cfg.Protocol.Hub) {
+			gatewayMint = enum.GATEWAY_MINT_MAPPING[network.Name]
+		}
+
+		transactor, err := transactor.NewDomainTransactor(pk, client, network.Domain, network.Vault, gatewayWallet, gatewayMint)
 		if err != nil {
 			return nil, fmt.Errorf("create transactor for %s: %w", network.Name, err)
 		}

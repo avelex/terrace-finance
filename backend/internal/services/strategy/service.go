@@ -20,15 +20,15 @@ type AaveRepository interface {
 	InsertAaveV3SupplySnapshot(ctx context.Context, snapshot models.AaveV3SupplySnapshot) error
 }
 
-type Manager struct {
+type Service struct {
 	transactor   *transactor.Transactor
 	aaveRepo     AaveRepository
 	strategyRepo *repository.StrategyRepository
 	cctp         *cctp_client.Client
 }
 
-func NewManager(transactor *transactor.Transactor, aaveRepo AaveRepository, strategyRepo *repository.StrategyRepository, cctp *cctp_client.Client) *Manager {
-	return &Manager{
+func NewService(transactor *transactor.Transactor, aaveRepo AaveRepository, strategyRepo *repository.StrategyRepository, cctp *cctp_client.Client) *Service {
+	return &Service{
 		transactor:   transactor,
 		aaveRepo:     aaveRepo,
 		strategyRepo: strategyRepo,
@@ -36,7 +36,7 @@ func NewManager(transactor *transactor.Transactor, aaveRepo AaveRepository, stra
 	}
 }
 
-func (m *Manager) UpdateReserveData(ctx context.Context, reserve models.ReserveDataUpdated) error {
+func (s *Service) UpdateReserveData(ctx context.Context, reserve models.ReserveDataUpdated) error {
 	// skip, if network is not supported
 	usdc, exists := enum.USDC_MAPPING[reserve.Network]
 	if !exists {
@@ -48,15 +48,15 @@ func (m *Manager) UpdateReserveData(ctx context.Context, reserve models.ReserveD
 		return nil
 	}
 
-	if err := m.aaveRepo.InsertAaveV3SupplySnapshot(ctx, reserve.Snapshot()); err != nil {
+	if err := s.aaveRepo.InsertAaveV3SupplySnapshot(ctx, reserve.Snapshot()); err != nil {
 		return fmt.Errorf("insert aave v3 supply snapshot: %w", err)
 	}
 
 	return nil
 }
 
-func (m *Manager) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error) {
-	fees, err := m.cctp.Fees(ctx, uint32(srcDomain), uint32(dstDomain))
+func (s *Service) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error) {
+	fees, err := s.cctp.Fees(ctx, uint32(srcDomain), uint32(dstDomain))
 	if err != nil {
 		return "", fmt.Errorf("get fees: %w", err)
 	}
@@ -64,7 +64,7 @@ func (m *Manager) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.Ci
 	fastMinFee := fees.FastTransfer()
 	maxFee := calculateMaxFee(fastMinFee)
 
-	txHash, err := m.transactor.SendAllFunds(ctx, srcDomain, dstDomain, maxFee)
+	txHash, err := s.transactor.SendAllFunds(ctx, srcDomain, dstDomain, maxFee)
 	if err != nil {
 		return "", fmt.Errorf("send all funds: %w", err)
 	}
@@ -72,22 +72,22 @@ func (m *Manager) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.Ci
 	return txHash, nil
 }
 
-func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
+func (s *Service) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
 	network := enum.NetworkByDomain(domain)
 	usdc := enum.USDC_MAPPING[network]
 	aavePool := enum.AAVE_V3[network]
 
-	terraceBalance, err := m.transactor.TerraceBalance(ctx, domain, usdc)
+	terraceBalance, err := s.transactor.TerraceBalance(ctx, domain, usdc)
 	if err != nil {
 		return "", fmt.Errorf("get terrace balance: %w", err)
 	}
 
-	supplyStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "supply")
+	supplyStrategy, err := s.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "supply")
 	if err != nil {
 		return "", fmt.Errorf("get supply strategy: %w", err)
 	}
 
-	approveStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "approve")
+	approveStrategy, err := s.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "approve")
 	if err != nil {
 		return "", fmt.Errorf("get approve strategy: %w", err)
 	}
@@ -97,7 +97,7 @@ func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.Circle
 		return "", fmt.Errorf("encode approve data: %w", err)
 	}
 
-	encodedSupplyData, err := encodeSupply(usdc, terraceBalance, m.transactor.TerraceAddress(domain))
+	encodedSupplyData, err := encodeSupply(usdc, terraceBalance, s.transactor.TerraceAddress(domain))
 	if err != nil {
 		return "", fmt.Errorf("encode supply data: %w", err)
 	}
@@ -107,7 +107,7 @@ func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.Circle
 	data := [][]byte{encodedApproveData, encodedSupplyData}
 	proofs := [][][32]byte{approveStrategy.ProofBytes(), supplyStrategy.ProofBytes()}
 
-	txHash, err := m.transactor.BatchExecute(ctx, domain, targets, selectors, data, proofs)
+	txHash, err := s.transactor.BatchExecute(ctx, domain, targets, selectors, data, proofs)
 	if err != nil {
 		return "", fmt.Errorf("batch execute: %w", err)
 	}
@@ -115,16 +115,16 @@ func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.Circle
 	return txHash, nil
 }
 
-func (m *Manager) WithdrawAllFundsFromAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
+func (s *Service) WithdrawAllFundsFromAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
 	network := enum.NetworkByDomain(domain)
 	usdc := enum.USDC_MAPPING[network]
 
-	encodedWithdrawData, err := encodeWithdraw(usdc, m.transactor.TerraceAddress(domain))
+	encodedWithdrawData, err := encodeWithdraw(usdc, s.transactor.TerraceAddress(domain))
 	if err != nil {
 		return "", fmt.Errorf("encode withdraw data: %w", err)
 	}
 
-	withdrawStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "withdraw")
+	withdrawStrategy, err := s.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "withdraw")
 	if err != nil {
 		return "", fmt.Errorf("get withdraw strategy: %w", err)
 	}
@@ -134,7 +134,7 @@ func (m *Manager) WithdrawAllFundsFromAaveV3(ctx context.Context, domain enum.Ci
 	data := [][]byte{encodedWithdrawData}
 	proofs := [][][32]byte{withdrawStrategy.ProofBytes()}
 
-	txHash, err := m.transactor.BatchExecute(ctx, domain, targets, selectors, data, proofs)
+	txHash, err := s.transactor.BatchExecute(ctx, domain, targets, selectors, data, proofs)
 	if err != nil {
 		return "", fmt.Errorf("batch execute: %w", err)
 	}

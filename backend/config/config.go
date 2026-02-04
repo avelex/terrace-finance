@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/avelex/terrace-finance/backend/internal/models/enum"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/rs/zerolog"
@@ -18,14 +20,21 @@ type Config struct {
 	EventscaleURL string    `env:"EVENTSCALE_URL" env-required:"true"`
 	DB            string    `env:"DB_URL" env-required:"true"`
 	PrivateKey    string    `env:"PRIVATE_KEY" env-required:"true"`
+	Protocol      Protocol  `yaml:"protocol"`
 	Networks      []Network `yaml:"networks"`
 }
 
+type Protocol struct {
+	Hub        enum.CircleDomain `yaml:"hub"`
+	Stablecoin common.Address    `yaml:"stablecoin"`
+	Staking    common.Address    `yaml:"staking"`
+}
+
 type Network struct {
-	Name     string         `yaml:"name"`
-	Domain   uint32         `yaml:"domain"`
-	URL      string         `yaml:"rpc_url"`
-	Contract common.Address `yaml:"contract"`
+	Name   string         `yaml:"name"`
+	Domain uint32         `yaml:"domain"`
+	URL    string         `yaml:"rpc_url"`
+	Vault  common.Address `yaml:"vault"`
 }
 
 func Load(path string) (Config, error) {

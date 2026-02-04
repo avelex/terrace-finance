@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 
 	"github.com/avelex/terrace-finance/backend/internal/models"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/shopspring/decimal"
 	"go.uber.org/ratelimit"
 )
 
@@ -35,7 +35,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) Balances(ctx context.Context, address common.Address, domains []enum.CircleDomain) (map[enum.CircleDomain]*big.Int, error) {
+func (c *Client) Balances(ctx context.Context, address common.Address, domains []enum.CircleDomain) (map[enum.CircleDomain]decimal.Decimal, error) {
 	u := buildBalancesURL()
 	req := newBalancesRequest(address, domains)
 	body, err := json.Marshal(req)

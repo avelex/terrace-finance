@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/avelex/terrace-finance/backend/internal/models"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 	"github.com/avelex/terrace-finance/backend/internal/models/request"
 	"github.com/avelex/terrace-finance/backend/internal/models/response"
@@ -15,28 +14,28 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type StrategyManager interface {
+type StrategyService interface {
 	SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error)
 	SupplyAllFundsToAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error)
 	WithdrawAllFundsFromAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error)
 }
 
-type WalletManager interface {
-	ProtocolBalances(ctx context.Context, address common.Address) (*response.ProtocolBalances, error)
-	UnifyUSDC(ctx context.Context, address common.Address, networks []uint32) (*response.PermitPayload, error)
-	SaveUnifyPermits(ctx context.Context, address common.Address, networks map[uint32]string) error
-	SaveBurnIntents(ctx context.Context, address common.Address, intents []models.BurnIntent) error
+type WalletService interface {
+	ProtocolBalances(ctx context.Context, user common.Address) (*response.ProtocolBalances, error)
+	UnifyUSDC(ctx context.Context, user common.Address, domains []enum.CircleDomain) (*response.PermitPayload, error)
+	SaveUnifyPermitsSignatures(ctx context.Context, user common.Address, signedPermits request.SignedPermits) error
+	SaveDepositAttestationAndSignature(ctx context.Context, user common.Address, deposit request.DepositAndStake) error
 }
 
 type Handler struct {
-	strategyManager StrategyManager
-	walletManager   WalletManager
+	strategyService StrategyService
+	walletService   WalletService
 }
 
-func NewHandler(sm StrategyManager, wm WalletManager) *Handler {
+func NewHandler(ss StrategyService, ws WalletService) *Handler {
 	return &Handler{
-		strategyManager: sm,
-		walletManager:   wm,
+		strategyService: ss,
+		walletService:   ws,
 	}
 }
 
@@ -69,7 +68,7 @@ func (h *Handler) send(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid dst domain")
 	}
 
-	txHash, err := h.strategyManager.SendAllFunds(c.Request().Context(), srcDomain, dstDomain)
+	txHash, err := h.strategyService.SendAllFunds(c.Request().Context(), srcDomain, dstDomain)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -85,7 +84,7 @@ func (h *Handler) supply(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid domain")
 	}
 
-	txHash, err := h.strategyManager.SupplyAllFundsToAaveV3(c.Request().Context(), domain)
+	txHash, err := h.strategyService.SupplyAllFundsToAaveV3(c.Request().Context(), domain)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -101,7 +100,7 @@ func (h *Handler) withdraw(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid domain")
 	}
 
-	txHash, err := h.strategyManager.WithdrawAllFundsFromAaveV3(c.Request().Context(), domain)
+	txHash, err := h.strategyService.WithdrawAllFundsFromAaveV3(c.Request().Context(), domain)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -117,7 +116,7 @@ func (h *Handler) walletBalances(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid address")
 	}
 
-	balances, err := h.walletManager.ProtocolBalances(c.Request().Context(), address)
+	balances, err := h.walletService.ProtocolBalances(c.Request().Context(), address)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -136,7 +135,7 @@ func (h *Handler) walletUnify(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 
-	permits, err := h.walletManager.UnifyUSDC(c.Request().Context(), address, req.Networks)
+	permits, err := h.walletService.UnifyUSDC(c.Request().Context(), address, req.Domains)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -150,12 +149,12 @@ func (h *Handler) walletUnifyPermits(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid address")
 	}
 
-	var req request.SignedPermit
+	var req request.SignedPermits
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 
-	if err := h.walletManager.SaveUnifyPermits(c.Request().Context(), address, req.Networks); err != nil {
+	if err := h.walletService.SaveUnifyPermitsSignatures(c.Request().Context(), address, req); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
@@ -168,12 +167,12 @@ func (h *Handler) walletDepositAndStake(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid address")
 	}
 
-	var req request.BurnIntents
+	var req request.DepositAndStake
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 
-	if err := h.walletManager.SaveBurnIntents(c.Request().Context(), address, req.Intents); err != nil {
+	if err := h.walletService.SaveDepositAttestationAndSignature(c.Request().Context(), address, req); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 

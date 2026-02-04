@@ -24,16 +24,31 @@ type DomainTransactor struct {
 
 	lock   *sync.Mutex
 	client *ethclient.Client
+	opts   *bind.TransactOpts
 
-	contract   common.Address
-	opts       *bind.TransactOpts
-	transactor *abi.TerraceTransactor
+	vaultAddress         common.Address
+	gatewayWalletAddress common.Address
+	gatewayMintAddress   common.Address
+
+	vault         *abi.TerraceTransactor
+	gatewayWallet *abi.GatewayWalletTransactor
+	gatewayMint   *abi.GatewayMintTransactor
 }
 
-func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain uint32, contract common.Address) (*DomainTransactor, error) {
-	transactor, err := abi.NewTerraceTransactor(contract, client)
+func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain uint32, vault common.Address, gatewayWallet common.Address, gatewayMint common.Address) (*DomainTransactor, error) {
+	vaultTransactor, err := abi.NewTerraceTransactor(vault, client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create transactor: %w", err)
+		return nil, fmt.Errorf("failed to create vault transactor: %w", err)
+	}
+
+	gatewayWalletTransactor, err := abi.NewGatewayWalletTransactor(gatewayWallet, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gateway wallet transactor: %w", err)
+	}
+
+	gatewayMintTransactor, err := abi.NewGatewayMintTransactor(gatewayMint, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gateway mint transactor: %w", err)
 	}
 
 	chainID, err := client.ChainID(context.Background())
@@ -55,19 +70,23 @@ func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain
 	opts.GasLimit = 600_000
 
 	return &DomainTransactor{
-		domain:     domain,
-		logger:     log.With().Uint32("domain", domain).Logger(),
-		lock:       &sync.Mutex{},
-		client:     client,
-		contract:   contract,
-		opts:       opts,
-		transactor: transactor,
+		domain:               domain,
+		logger:               log.With().Uint32("domain", domain).Logger(),
+		lock:                 &sync.Mutex{},
+		client:               client,
+		vaultAddress:         vault,
+		gatewayWalletAddress: gatewayWallet,
+		gatewayMintAddress:   gatewayMint,
+		opts:                 opts,
+		vault:                vaultTransactor,
+		gatewayWallet:        gatewayWalletTransactor,
+		gatewayMint:          gatewayMintTransactor,
 	}, nil
 }
 
 func (dt *DomainTransactor) ReceiveMessage(message, attestation []byte) (*types.Receipt, error) {
 	receipt, err := dt.sendTransaction(context.Background(), "ReceiveMessage", func() (*types.Transaction, error) {
-		return dt.transactor.ReceiveMessage(dt.opts, message, attestation)
+		return dt.vault.ReceiveMessage(dt.opts, message, attestation)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive message: %w", err)
@@ -78,7 +97,7 @@ func (dt *DomainTransactor) ReceiveMessage(message, attestation []byte) (*types.
 
 func (dt *DomainTransactor) SendAllFundsToHub(maxFee *big.Int, minFinalityThreshold uint32) (*types.Receipt, error) {
 	receipt, err := dt.sendTransaction(context.Background(), "SendAllToHub", func() (*types.Transaction, error) {
-		return dt.transactor.SendAllToHub(dt.opts, maxFee, minFinalityThreshold)
+		return dt.vault.SendAllToHub(dt.opts, maxFee, minFinalityThreshold)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send all funds to hub: %w", err)
@@ -89,7 +108,7 @@ func (dt *DomainTransactor) SendAllFundsToHub(maxFee *big.Int, minFinalityThresh
 
 func (dt *DomainTransactor) SendAllFundsToTerrace(domain enum.CircleDomain, maxFee *big.Int, minFinalityThreshold uint32) (*types.Receipt, error) {
 	receipt, err := dt.sendTransaction(context.Background(), "SendAllToTerrace", func() (*types.Transaction, error) {
-		return dt.transactor.SendAllToTerrace(dt.opts, uint32(domain), maxFee, minFinalityThreshold)
+		return dt.vault.SendAllToTerrace(dt.opts, uint32(domain), maxFee, minFinalityThreshold)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send all funds to terrace: %w", err)
@@ -100,7 +119,7 @@ func (dt *DomainTransactor) SendAllFundsToTerrace(domain enum.CircleDomain, maxF
 
 func (dt *DomainTransactor) BatchExecute(targets []common.Address, selectors [][]byte, data [][]byte, proofs [][][32]byte) (*types.Receipt, error) {
 	receipt, err := dt.sendTransaction(context.Background(), "BatchExecute", func() (*types.Transaction, error) {
-		return dt.transactor.BatchExecute(dt.opts, targets, selectors, data, proofs)
+		return dt.vault.BatchExecute(dt.opts, targets, selectors, data, proofs)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to batch execute: %w", err)
@@ -117,7 +136,29 @@ func (dt *DomainTransactor) TerraceBalanceOf(ctx context.Context, token common.A
 
 	opts := &bind.CallOpts{Context: ctx}
 
-	return caller.BalanceOf(opts, dt.contract)
+	return caller.BalanceOf(opts, dt.vaultAddress)
+}
+
+func (dt *DomainTransactor) DepositWithPermit(token, owner common.Address, amount, deadline *big.Int, sig []byte) (*types.Receipt, error) {
+	receipt, err := dt.sendTransaction(context.Background(), "DepositWithPermit", func() (*types.Transaction, error) {
+		return dt.gatewayWallet.DepositWithPermit(dt.opts, token, owner, amount, deadline, sig)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to deposit with permit: %w", err)
+	}
+
+	return receipt, nil
+}
+
+func (dt *DomainTransactor) GatewayMint(attestation, sig []byte) (*types.Receipt, error) {
+	receipt, err := dt.sendTransaction(context.Background(), "GatewayMint", func() (*types.Transaction, error) {
+		return dt.gatewayMint.GatewayMint(dt.opts, attestation, sig)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to gateway mint: %w", err)
+	}
+
+	return receipt, nil
 }
 
 func (dt *DomainTransactor) sendTransaction(ctx context.Context, method string, txFunc func() (*types.Transaction, error)) (*types.Receipt, error) {

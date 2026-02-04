@@ -1,10 +1,14 @@
 package response
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/avelex/terrace-finance/backend/internal/models/enum"
+
+	"github.com/shopspring/decimal"
+)
 
 type ProtocolBalances struct {
-	StakingBalance    decimal.Decimal            `json:"stakingBalance"`
-	StablecoinBalance decimal.Decimal            `json:"stablecoinBalance"`
-	UnifiedUSDC       map[uint32]decimal.Decimal `json:"unifiedUsdc"`
-	USDC              map[uint32]decimal.Decimal `json:"usdc"`
+	StakingBalance    decimal.Decimal                       `json:"stakingBalance"`
+	StablecoinBalance decimal.Decimal                       `json:"stablecoinBalance"`
+	UnifiedUSDC       map[enum.CircleDomain]decimal.Decimal `json:"unifiedUsdc"`
+	USDC              map[enum.CircleDomain]decimal.Decimal `json:"usdc"`
 }
