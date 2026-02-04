@@ -13,6 +13,8 @@ import (
 
 type StrategyManager interface {
 	SendAllFunds(ctx context.Context, srcDomain, dstDomain uint32) (string, error)
+	SupplyAllFundsToAaveV3(ctx context.Context, domain uint32) (string, error)
+	WithdrawAllFundsFromAaveV3(ctx context.Context, domain uint32) (string, error)
 }
 
 type Handler struct {
@@ -27,6 +29,8 @@ func NewHandler(manager StrategyManager) *Handler {
 
 func (h *Handler) Register(g *echo.Group) {
 	g.GET("/send/:src/:dst", h.send)
+	g.GET("/strategy/supply/:domain", h.supply)
+	g.GET("/strategy/withdraw/:domain", h.withdraw)
 }
 
 func (h *Handler) send(c echo.Context) error {
@@ -41,6 +45,38 @@ func (h *Handler) send(c echo.Context) error {
 	}
 
 	txHash, err := h.manager.SendAllFunds(c.Request().Context(), srcDomain, dstDomain)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"txHash": txHash,
+	})
+}
+
+func (h *Handler) supply(c echo.Context) error {
+	domain, err := parseDomain(c.Param("domain"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid domain")
+	}
+
+	txHash, err := h.manager.SupplyAllFundsToAaveV3(c.Request().Context(), domain)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"txHash": txHash,
+	})
+}
+
+func (h *Handler) withdraw(c echo.Context) error {
+	domain, err := parseDomain(c.Param("domain"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid domain")
+	}
+
+	txHash, err := h.manager.WithdrawAllFundsFromAaveV3(c.Request().Context(), domain)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}

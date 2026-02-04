@@ -7,14 +7,12 @@ import (
 	"sync"
 	"time"
 
-	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
 	"github.com/avelex/terrace-finance/backend/internal/models"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/rs/zerolog/log"
-	"github.com/shopspring/decimal"
 )
 
 type Repository interface {
@@ -26,15 +24,13 @@ type Transactor struct {
 	hubDomain uint32
 	domains   map[uint32]*DomainTransactor
 	repo      Repository
-	cctp      *cctp_client.Client
 }
 
-func NewTransactor(hubDomain uint32, domains map[uint32]*DomainTransactor, repo Repository, cctp *cctp_client.Client) *Transactor {
+func NewTransactor(hubDomain uint32, domains map[uint32]*DomainTransactor, repo Repository) *Transactor {
 	return &Transactor{
 		hubDomain: hubDomain,
 		domains:   domains,
 		repo:      repo,
-		cctp:      cctp,
 	}
 }
 
@@ -54,19 +50,24 @@ func (t *Transactor) Start(ctx context.Context) {
 	}
 }
 
-func (t *Transactor) SendAllFunds(ctx context.Context, srcDomain, dstDomain uint32) (string, error) {
+func (t *Transactor) TerraceBalance(ctx context.Context, domain uint32, token common.Address) (*big.Int, error) {
+	dt, exists := t.domains[domain]
+	if !exists {
+		return nil, fmt.Errorf("domain %d not found", domain)
+	}
+
+	return dt.TerraceBalanceOf(ctx, token)
+}
+
+func (t *Transactor) TerraceAddress(domain uint32) common.Address {
+	return t.domains[domain].contract
+}
+
+func (t *Transactor) SendAllFunds(ctx context.Context, srcDomain, dstDomain uint32, maxFee *big.Int) (string, error) {
 	dt, exists := t.domains[srcDomain]
 	if !exists {
 		return "", fmt.Errorf("domain %d not found", srcDomain)
 	}
-
-	fees, err := t.cctp.Fees(ctx, srcDomain, dstDomain)
-	if err != nil {
-		return "", fmt.Errorf("get fees: %w", err)
-	}
-
-	fastMinFee := fees.FastTransfer()
-	maxFee := calculateMaxFee(fastMinFee)
 
 	if srcDomain == t.hubDomain {
 		receipt, err := dt.SendAllFundsToTerrace(dstDomain, maxFee, enum.FAST_TRANSFER)
@@ -83,8 +84,22 @@ func (t *Transactor) SendAllFunds(ctx context.Context, srcDomain, dstDomain uint
 
 		return receipt.TxHash.String(), nil
 	} else {
-		return "", fmt.Errorf("unknown send path")
+		return "", fmt.Errorf("invalid sending path")
 	}
+}
+
+func (t *Transactor) BatchExecute(ctx context.Context, domain uint32, targets []common.Address, selectors [][]byte, data [][]byte, proofs [][][32]byte) (string, error) {
+	dt, exists := t.domains[domain]
+	if !exists {
+		return "", fmt.Errorf("domain %d not found", domain)
+	}
+
+	receipt, err := dt.BatchExecute(targets, selectors, data, proofs)
+	if err != nil {
+		return "", fmt.Errorf("batch execute: %w", err)
+	}
+
+	return receipt.TxHash.String(), nil
 }
 
 func (t *Transactor) process(ctx context.Context) error {
@@ -126,16 +141,4 @@ func (t *Transactor) process(ctx context.Context) error {
 	wg.Wait()
 
 	return nil
-}
-
-// fee in bps, for example, 1 = 0.01% = 0.0001
-func calculateMaxFee(fee decimal.Decimal) *big.Int {
-	if fee.IsZero() {
-		return big.NewInt(0)
-	}
-
-	// Convert to subunits and add 20% buffer
-	feeSubunits := fee.Div(decimal.NewFromInt(1_00_00)).Mul(decimal.NewFromInt(1_000_000))
-	maxFee := feeSubunits.Mul(decimal.NewFromFloat(1.2))
-	return maxFee.BigInt()
 }

@@ -19,10 +19,12 @@ import (
 
 type DomainTransactor struct {
 	logger zerolog.Logger
+	domain uint32
 
 	lock   *sync.Mutex
 	client *ethclient.Client
 
+	contract   common.Address
 	opts       *bind.TransactOpts
 	transactor *abi.TerraceTransactor
 }
@@ -49,11 +51,14 @@ func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain
 	}
 
 	opts.Nonce = big.NewInt(int64(nonce))
+	opts.GasLimit = 600_000
 
 	return &DomainTransactor{
+		domain:     domain,
 		logger:     log.With().Uint32("domain", domain).Logger(),
 		lock:       &sync.Mutex{},
 		client:     client,
+		contract:   contract,
 		opts:       opts,
 		transactor: transactor,
 	}, nil
@@ -90,6 +95,28 @@ func (dt *DomainTransactor) SendAllFundsToTerrace(domain uint32, maxFee *big.Int
 	}
 
 	return receipt, nil
+}
+
+func (dt *DomainTransactor) BatchExecute(targets []common.Address, selectors [][]byte, data [][]byte, proofs [][][32]byte) (*types.Receipt, error) {
+	receipt, err := dt.sendTransaction(context.Background(), "BatchExecute", func() (*types.Transaction, error) {
+		return dt.transactor.BatchExecute(dt.opts, targets, selectors, data, proofs)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to batch execute: %w", err)
+	}
+
+	return receipt, nil
+}
+
+func (dt *DomainTransactor) TerraceBalanceOf(ctx context.Context, token common.Address) (*big.Int, error) {
+	caller, err := abi.NewIERC20Caller(token, dt.client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ERC20 caller: %w", err)
+	}
+
+	opts := &bind.CallOpts{Context: ctx}
+
+	return caller.BalanceOf(opts, dt.contract)
 }
 
 func (dt *DomainTransactor) sendTransaction(ctx context.Context, method string, txFunc func() (*types.Transaction, error)) (*types.Receipt, error) {

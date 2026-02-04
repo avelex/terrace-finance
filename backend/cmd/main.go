@@ -77,14 +77,14 @@ func run(ctx context.Context) error {
 
 	repo := repository.NewBridgeRepository(bunDB)
 	aaveRepo := repository.NewAaveRepository(bunDB)
+	strategyRepo := repository.NewStrategyRepository(bunDB)
 
-	manager := strategy.NewManager(aaveRepo)
-
-	eventHandler := event_handler.NewEventHandler(repo, manager)
 	processor := processor.New(cctpClient, repo)
-	transactor := transactor.NewTransactor(enum.ARC_DOMAIN, domains, repo, cctpClient)
+	transactor := transactor.NewTransactor(enum.ARC_DOMAIN, domains, repo)
+	manager := strategy.NewManager(transactor, aaveRepo, strategyRepo, cctpClient)
+	eventHandler := event_handler.NewEventHandler(repo, manager)
 
-	apiHandler := api.NewHandler(transactor)
+	apiHandler := api.NewHandler(manager)
 
 	echoRouter := echo.New()
 	apiGroup := echoRouter.Group("/api")
