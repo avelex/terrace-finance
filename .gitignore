@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+contracts/lib/
 lib64/
 parts/
 sdist/
@@ -170,7 +170,7 @@ cython_debug/
 .env*
 out/
 build/
-lib/
+contracts/lib/
 .password.unsafe
 .password
 .password*
