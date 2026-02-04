@@ -238,9 +238,9 @@ func (t *Transactor) processGatewayMints(ctx context.Context) error {
 			return err
 		}
 
-		receipt, err := t.domains[t.hubDomain].GatewayMint(attestation, sig)
+		receipt, err := t.domains[t.hubDomain].DepositAndStake(attestation, sig)
 		if err != nil {
-			log.Error().Err(err).Msg("gateway mint failed")
+			log.Error().Err(err).Msg("deposit and stake failed")
 			return err
 		}
 

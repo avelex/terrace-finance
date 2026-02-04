@@ -20,18 +20,20 @@ interface UseUnifyResult {
   isUnifying: boolean;
   currentStep: string | null;
   error: string | null;
-  unify: (address: `0x${string}`, usdcBalances: TokenBalancesByDomain) => Promise<boolean>;
+  lastUnifyId: string | null;
+  unify: (address: `0x${string}`, usdcBalances: TokenBalancesByDomain) => Promise<string | null>;
 }
 
 export function useUnify(): UseUnifyResult {
   const [isUnifying, setIsUnifying] = useState(false);
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastUnifyId, setLastUnifyId] = useState<string | null>(null);
 
   const unify = useCallback(async (
     address: `0x${string}`,
     usdcBalances: TokenBalancesByDomain
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     setIsUnifying(true);
     setError(null);
     setCurrentStep('Initializing...');
@@ -44,7 +46,7 @@ export function useUnify(): UseUnifyResult {
 
       if (domainsWithBalance.length === 0) {
         setError('No USDC balance to unify');
-        return false;
+        return null;
       }
 
       setCurrentStep(`Requesting permits for ${domainsWithBalance.length} chains...`);
@@ -207,12 +209,13 @@ export function useUnify(): UseUnifyResult {
       }
 
       setCurrentStep('Complete!');
-      return true;
+      setLastUnifyId(id);
+      return id;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
       console.error('Unify error:', err);
-      return false;
+      return null;
     } finally {
       setIsUnifying(false);
       // Clear step after a delay
@@ -224,6 +227,7 @@ export function useUnify(): UseUnifyResult {
     isUnifying,
     currentStep,
     error,
+    lastUnifyId,
     unify,
   };
 }

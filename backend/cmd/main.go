@@ -89,7 +89,7 @@ func run(ctx context.Context) error {
 	}
 
 	cctpProcessor := cctp_processor.New(cctpClient, repo)
-	transactor := transactor.NewTransactor(enum.BASE_DOMAIN, domains, repo, userRepo)
+	transactor := transactor.NewTransactor(conf.Protocol.Hub, domains, repo, userRepo)
 
 	walletService := wallet.NewService(conf.Protocol, gatewayClient, networkService, userRepo)
 	strategyService := strategy.NewService(transactor, aaveRepo, strategyRepo, cctpClient)
@@ -170,7 +170,7 @@ func connectDomainTransactors(cfg config.Config, svc *network.Service) (map[enum
 		gatewayMint := common.Address{}
 
 		if network.Domain == uint32(cfg.Protocol.Hub) {
-			gatewayMint = enum.GATEWAY_MINT_MAPPING[network.Name]
+			gatewayMint = cfg.Protocol.Stablecoin
 		}
 
 		transactor, err := transactor.NewDomainTransactor(pk, client, network.Domain, network.Vault, gatewayWallet, gatewayMint)

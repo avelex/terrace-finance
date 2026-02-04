@@ -69,3 +69,10 @@ export interface PermitsRequest {
   domains: Record<number, string>; // domain -> signature (0x...)
 }
 
+// POST /api/wallet/:address/deposit_stake - Request
+export interface DepositStakeRequest {
+  id: string;
+  attestation: string;
+  signature: string;
+}
+

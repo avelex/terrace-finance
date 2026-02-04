@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { useBalances } from '@/hooks/useBalances';
 import { useUnify } from '@/hooks/useUnify';
+import { useDeposit } from '@/hooks/useDeposit';
 import { CircleDomain, DOMAIN_NAMES, DISPLAYED_DOMAINS, TokenBalancesByDomain } from '@/lib/types';
 
 function formatBalance(value: number): string {
@@ -35,18 +37,36 @@ function BalanceList({ title, balances }: BalanceListProps) {
 export function BalancesCard() {
     const { address, isConnected } = useWallet();
     const { balances, isLoading, error, refetch } = useBalances(address);
-    const { isUnifying, currentStep, error: unifyError, unify } = useUnify();
+    const { isUnifying, currentStep: unifyStep, error: unifyError, lastUnifyId, unify } = useUnify();
+    const { isDepositing, currentStep: depositStep, error: depositError, deposit } = useDeposit();
+
+    // Track unifyId for deposit
+    const [unifyId, setUnifyId] = useState<string | null>(null);
 
     // Check if there are any USDC balances > 0
     const hasUsdcBalance = balances?.usdc &&
         Object.values(balances.usdc).some(balance => balance > 0);
 
+    // Check if there are any unified USDC balances > 0
+    const hasUnifiedBalance = balances?.unifiedUsdc &&
+        Object.values(balances.unifiedUsdc).some(balance => balance > 0);
+
     const handleUnify = async () => {
         if (!address || !balances?.usdc) return;
 
-        const success = await unify(address, balances.usdc);
+        const id = await unify(address, balances.usdc);
+        if (id) {
+            setUnifyId(id);
+            refetch();
+        }
+    };
+
+    const handleDeposit = async () => {
+        if (!address || !balances?.unifiedUsdc || !unifyId) return;
+
+        const success = await deposit(address, balances.unifiedUsdc, unifyId);
         if (success) {
-            // Refetch balances after successful unify
+            setUnifyId(null); // Reset after successful deposit
             refetch();
         }
     };
@@ -60,9 +80,14 @@ export function BalancesCard() {
                         Connect wallet to view balances
                     </div>
                 </div>
-                <button className="unify-button" disabled>
-                    Unify USDC
-                </button>
+                <div className="action-buttons">
+                    <button className="unify-button" disabled>
+                        Unify USDC
+                    </button>
+                    <button className="deposit-button" disabled>
+                        Deposit
+                    </button>
+                </div>
             </div>
         );
     }
@@ -87,6 +112,9 @@ export function BalancesCard() {
         );
     }
 
+    const currentStep = unifyStep || depositStep;
+    const actionError = unifyError || depositError;
+
     return (
         <div className="balances-wrapper">
             <div className="balances-card">
@@ -109,17 +137,28 @@ export function BalancesCard() {
                 </div>
             </div>
 
-            <button
-                className="unify-button"
-                onClick={handleUnify}
-                disabled={!hasUsdcBalance || isUnifying}
-            >
-                {isUnifying ? (currentStep || 'Processing...') : 'Unify USDC'}
-            </button>
+            <div className="action-buttons">
+                <button
+                    className="unify-button"
+                    onClick={handleUnify}
+                    disabled={!hasUsdcBalance || isUnifying || isDepositing}
+                >
+                    {isUnifying ? (unifyStep || 'Processing...') : 'Unify USDC'}
+                </button>
 
-            {unifyError && (
-                <div className="unify-error">{unifyError}</div>
+                <button
+                    className="deposit-button"
+                    onClick={handleDeposit}
+                    disabled={!hasUnifiedBalance || !unifyId || isDepositing || isUnifying}
+                >
+                    {isDepositing ? (depositStep || 'Processing...') : 'Deposit'}
+                </button>
+            </div>
+
+            {actionError && (
+                <div className="action-error">{actionError}</div>
             )}
         </div>
     );
 }
+

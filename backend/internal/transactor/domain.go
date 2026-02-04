@@ -32,7 +32,7 @@ type DomainTransactor struct {
 
 	vault         *abi.TerraceTransactor
 	gatewayWallet *abi.GatewayWalletTransactor
-	gatewayMint   *abi.GatewayMintTransactor
+	minter        *abi.StablecoinTransactor
 }
 
 func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain uint32, vault common.Address, gatewayWallet common.Address, gatewayMint common.Address) (*DomainTransactor, error) {
@@ -46,7 +46,7 @@ func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain
 		return nil, fmt.Errorf("failed to create gateway wallet transactor: %w", err)
 	}
 
-	gatewayMintTransactor, err := abi.NewGatewayMintTransactor(gatewayMint, client)
+	minterTransactor, err := abi.NewStablecoinTransactor(gatewayMint, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gateway mint transactor: %w", err)
 	}
@@ -80,7 +80,7 @@ func NewDomainTransactor(key *ecdsa.PrivateKey, client *ethclient.Client, domain
 		opts:                 opts,
 		vault:                vaultTransactor,
 		gatewayWallet:        gatewayWalletTransactor,
-		gatewayMint:          gatewayMintTransactor,
+		minter:               minterTransactor,
 	}, nil
 }
 
@@ -158,12 +158,12 @@ func (dt *DomainTransactor) DepositWithPermit(token, owner common.Address, amoun
 	return receipt, nil
 }
 
-func (dt *DomainTransactor) GatewayMint(attestation, sig []byte) (*types.Receipt, error) {
-	receipt, err := dt.sendTransaction(context.Background(), "GatewayMint", func() (*types.Transaction, error) {
-		return dt.gatewayMint.GatewayMint(dt.opts, attestation, sig)
+func (dt *DomainTransactor) DepositAndStake(attestation, sig []byte) (*types.Receipt, error) {
+	receipt, err := dt.sendTransaction(context.Background(), "DepositAndStake", func() (*types.Transaction, error) {
+		return dt.minter.GatewayDepositAndStake(dt.opts, attestation, sig)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to gateway mint: %w", err)
+		return nil, fmt.Errorf("failed to deposit and stake: %w", err)
 	}
 
 	return receipt, nil
