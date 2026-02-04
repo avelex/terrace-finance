@@ -140,8 +140,16 @@ func (dt *DomainTransactor) TerraceBalanceOf(ctx context.Context, token common.A
 }
 
 func (dt *DomainTransactor) DepositWithPermit(token, owner common.Address, amount, deadline *big.Int, sig []byte) (*types.Receipt, error) {
+	if len(sig) != 65 {
+		return nil, fmt.Errorf("invalid signature length: %d", len(sig))
+	}
+
+	r := [32]byte(sig[:32])
+	s := [32]byte(sig[32:64])
+	v := uint8(sig[64])
+
 	receipt, err := dt.sendTransaction(context.Background(), "DepositWithPermit", func() (*types.Transaction, error) {
-		return dt.gatewayWallet.DepositWithPermit(dt.opts, token, owner, amount, deadline, sig)
+		return dt.gatewayWallet.DepositWithPermit0(dt.opts, token, owner, amount, deadline, v, r, s)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deposit with permit: %w", err)

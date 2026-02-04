@@ -2,10 +2,7 @@
 export enum CircleDomain {
   ETHEREUM = 0,
   AVAX = 1,
-  OPTIMISM = 2,
-  ARBITRUM = 3,
   BASE = 6,
-  POLYGON = 7,
   ARC = 26,
 }
 
@@ -13,10 +10,7 @@ export enum CircleDomain {
 export const DOMAIN_NAMES: Record<CircleDomain, string> = {
   [CircleDomain.ETHEREUM]: 'Ethereum',
   [CircleDomain.AVAX]: 'Avalanche',
-  [CircleDomain.OPTIMISM]: 'Optimism',
-  [CircleDomain.ARBITRUM]: 'Arbitrum',
   [CircleDomain.BASE]: 'Base',
-  [CircleDomain.POLYGON]: 'Polygon',
   [CircleDomain.ARC]: 'Arc',
 };
 
@@ -24,10 +18,8 @@ export const DOMAIN_NAMES: Record<CircleDomain, string> = {
 export const DISPLAYED_DOMAINS: CircleDomain[] = [
   CircleDomain.ARC,
   CircleDomain.ETHEREUM,
-  CircleDomain.ARBITRUM,
   CircleDomain.BASE,
   CircleDomain.AVAX,
-  CircleDomain.POLYGON,
 ];
 
 // Token balances by domain
@@ -42,3 +34,38 @@ export interface BalancesResponse {
   usdc: TokenBalancesByDomain;
   unifiedUsdc: TokenBalancesByDomain;
 }
+
+// EIP-712 TypedData structure (from viem)
+export interface TypedDataDomain {
+  name?: string;
+  version?: string;
+  chainId?: number | string; // can be hex string like "0xa4b1"
+  verifyingContract?: `0x${string}`;
+  salt?: `0x${string}`;
+}
+
+export interface TypedData {
+  domain: TypedDataDomain;
+  types: Record<string, { name: string; type: string }[]>;
+  primaryType: string;
+  message: Record<string, unknown>;
+}
+
+// POST /api/wallet/:address/unify - Request
+export interface UnifyRequest {
+  domains: number[];
+}
+
+// POST /api/wallet/:address/unify - Response
+// Note: Backend sends typedData as JSON string, parsed in useUnify hook
+export interface UnifyResponse {
+  id: string;
+  domains: Record<number, TypedData | string>;
+}
+
+// POST /api/wallet/:address/unify/permits - Request
+export interface PermitsRequest {
+  id: string;
+  domains: Record<number, string>; // domain -> signature (0x...)
+}
+

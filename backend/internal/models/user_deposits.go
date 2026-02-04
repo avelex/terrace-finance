@@ -10,9 +10,9 @@ import (
 type UserDeposit struct {
 	bun.BaseModel `bun:"table:user_deposits"`
 
-	ID    uuid.UUID `bun:"id,pk"`
-	Owner string    `bun:"owner,notnull"`
-	Value string    `bun:"value,notnull"`
+	ID      uuid.UUID `bun:"id,pk"`
+	Address string    `bun:"address,notnull"`
+	Value   string    `bun:"value,notnull"`
 
 	DestDomain      uint32 `bun:"dest_domain,notnull"`
 	DestGatewayMint string `bun:"dest_gateway_mint,notnull"`

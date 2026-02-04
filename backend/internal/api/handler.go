@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 )
 
 type StrategyService interface {
@@ -127,16 +128,19 @@ func (h *Handler) walletBalances(c echo.Context) error {
 func (h *Handler) walletUnify(c echo.Context) error {
 	address, err := parseAddress(c.Param("address"))
 	if err != nil {
+		log.Error().Err(err).Msg("invalid address")
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid address")
 	}
 
 	var req request.UnifyBalances
 	if err := c.Bind(&req); err != nil {
+		log.Error().Err(err).Msg("invalid request")
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 
 	permits, err := h.walletService.UnifyUSDC(c.Request().Context(), address, req.Domains)
 	if err != nil {
+		log.Error().Err(err).Msg("failed to unify USDC")
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 

@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 )
 
@@ -49,7 +51,13 @@ func (s *Service) ProtocolBalances(ctx context.Context, user common.Address) (*r
 
 	unifiedBalances, err := s.gateway.Balances(ctx, user, supportedDomains)
 	if err != nil {
-		return nil, fmt.Errorf("gateway balances: %w", err)
+		log.Error().Err(err).Msg("gateway balances")
+
+		if !errors.Is(err, circle_gateway.ErrUnifiedBalanceNotFound) {
+			return nil, fmt.Errorf("gateway balances: %w", err)
+		}
+
+		unifiedBalances = make(map[enum.CircleDomain]decimal.Decimal)
 	}
 
 	usdcBalances := make(map[enum.CircleDomain]decimal.Decimal)
@@ -122,14 +130,31 @@ func (s *Service) UnifyUSDC(ctx context.Context, user common.Address, domains []
 
 		usdcAddress := enum.USDC_MAPPING[network]
 
-		usdcCaller, err := abi.NewIERC20Caller(usdcAddress, client)
+		usdcCaller, err := abi.NewUSDCCaller(usdcAddress, client)
 		if err != nil {
 			return nil, fmt.Errorf("usdc caller for %s: %w", network, err)
 		}
 
-		usdcBalance, err := usdcCaller.BalanceOf(&bind.CallOpts{Context: ctx}, user)
+		// usdcBalance, err := usdcCaller.BalanceOf(&bind.CallOpts{Context: ctx}, user)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("usdc balance in %s: %w", network, err)
+		// }
+
+		usdcBalance := big.NewInt(100_000) // 0.1 USDC
+
+		permitNonce, err := usdcCaller.Nonces(&bind.CallOpts{Context: ctx}, user)
 		if err != nil {
-			return nil, fmt.Errorf("usdc balance in %s: %w", network, err)
+			return nil, fmt.Errorf("usdc permit nonce in %s: %w", network, err)
+		}
+
+		usdcName, err := usdcCaller.Name(&bind.CallOpts{Context: ctx})
+		if err != nil {
+			return nil, fmt.Errorf("usdc name in %s: %w", network, err)
+		}
+
+		usdcVersion, err := usdcCaller.Version(&bind.CallOpts{Context: ctx})
+		if err != nil {
+			return nil, fmt.Errorf("usdc version in %s: %w", network, err)
 		}
 
 		chainID, err := client.ChainID(ctx)
@@ -140,7 +165,7 @@ func (s *Service) UnifyUSDC(ctx context.Context, user common.Address, domains []
 		deadline := time.Now().Unix() + 3600
 		gatewayWallet := enum.GATEWAY_WALLET_MAPPING[network]
 
-		typedData := NewEip712TypedData(usdcAddress, user, gatewayWallet, usdcBalance, chainID.Int64(), deadline)
+		typedData := NewEip712TypedData(usdcName, usdcVersion, usdcAddress, user, gatewayWallet, usdcBalance, chainID.Int64(), deadline, permitNonce)
 		bytes, err := json.Marshal(&typedData)
 		if err != nil {
 			return nil, fmt.Errorf("marshal typed data: %w", err)
@@ -161,7 +186,7 @@ func (s *Service) UnifyUSDC(ctx context.Context, user common.Address, domains []
 
 	userDeposit := models.UserDeposit{
 		ID:              depositID,
-		Owner:           user.String(),
+		Address:         user.String(),
 		Value:           totalBalance.String(),
 		DestDomain:      uint32(s.protocol.Hub),
 		DestGatewayMint: enum.GATEWAY_MINT_MAPPING[enum.NetworkByDomain(s.protocol.Hub)].String(),
@@ -204,11 +229,11 @@ func (s *Service) SaveDepositAttestationAndSignature(ctx context.Context, _ comm
 	return nil
 }
 
-func NewEip712TypedData(usdc, depositor, spender common.Address, balance *big.Int, chainID, deadline int64) apitypes.TypedData {
+func NewEip712TypedData(name string, version string, usdc, depositor, spender common.Address, balance *big.Int, chainID, deadline int64, nonce *big.Int) apitypes.TypedData {
 	return apitypes.TypedData{
 		Domain: apitypes.TypedDataDomain{
-			Name:              "USDC",
-			Version:           "2", // TODO: what's the version?
+			Name:              name,
+			Version:           version,
 			ChainId:           math.NewHexOrDecimal256(chainID),
 			VerifyingContract: usdc.String(),
 		},
@@ -231,9 +256,9 @@ func NewEip712TypedData(usdc, depositor, spender common.Address, balance *big.In
 		Message: apitypes.TypedDataMessage{
 			"owner":    depositor.String(),
 			"spender":  spender.String(),
-			"value":    balance,
-			"nonce":    0, // TODO: what's the nonce?
-			"deadline": deadline,
+			"value":    balance.String(),
+			"nonce":    nonce.String(),
+			"deadline": fmt.Sprintf("%d", deadline),
 		},
 	}
 }

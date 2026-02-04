@@ -178,21 +178,21 @@ func (t *Transactor) processGatewayDeposits(ctx context.Context) error {
 	wg.Add(len(ops))
 
 	for _, op := range ops {
-		go func(op models.UserUnifiedPermits) {
+		go func(permit models.UserUnifiedPermits) {
 			defer wg.Done()
 
-			domain := enum.CircleDomain(op.Domain)
-			token := common.HexToAddress(op.Token)
-			owner := common.HexToAddress(op.Owner)
-			deadline := new(big.Int).SetInt64(op.Deadline)
+			domain := enum.CircleDomain(permit.Domain)
+			token := common.HexToAddress(permit.Token)
+			owner := common.HexToAddress(permit.Owner)
+			deadline := new(big.Int).SetInt64(permit.Deadline)
 
-			amount, ok := new(big.Int).SetString(op.Value, 10)
+			amount, ok := new(big.Int).SetString(permit.Value, 10)
 			if !ok {
 				log.Error().Msg("unable to parse amount")
 				return
 			}
 
-			sig, err := hexutil.Decode(op.Signature)
+			sig, err := hexutil.Decode(permit.Signature)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to decode signature")
 				return
@@ -204,7 +204,7 @@ func (t *Transactor) processGatewayDeposits(ctx context.Context) error {
 				return
 			}
 
-			if err := t.userRepo.UpdatePermitDepositTxHash(ctx, op.DepositID.String(), owner, uint32(domain), receipt.TxHash); err != nil {
+			if err := t.userRepo.UpdatePermitDepositTxHash(ctx, permit.DepositID.String(), owner, uint32(domain), receipt.TxHash); err != nil {
 				log.Error().Err(err).Msg("update permit deposit tx hash failed")
 				return
 			}

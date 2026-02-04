@@ -13,7 +13,7 @@ import (
 	"go.uber.org/ratelimit"
 )
 
-const baseURL = "https://iris-api.circle.com/v2"
+const baseURL = "https://iris-api-sandbox.circle.com/v2"
 
 const (
 	feesPath     = "/burn/USDC/fees"

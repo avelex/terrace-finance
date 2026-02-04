@@ -1,11 +1,34 @@
-import { createPublicClient, createWalletClient, custom, http } from 'viem';
-import { mainnet } from 'viem/chains';
+import { createPublicClient, createWalletClient, custom, http, Chain } from 'viem';
+import { arcTestnet, baseSepolia, sepolia, avalancheFuji } from 'viem/chains';
 
-// Public client for reading blockchain data
+// Map chainId to chain config
+const CHAIN_MAP: Record<number, Chain> = {
+  11155111: sepolia,
+  43113: avalancheFuji,
+  84532: baseSepolia,
+  5042002: arcTestnet,
+};
+
+// Public client for reading blockchain data (default mainnet)
 export const publicClient = createPublicClient({
-  chain: mainnet,
+  chain: arcTestnet,
   transport: http(),
 });
+
+// Create public client for specific chain
+export function createPublicClientForChain(chainId: number) {
+  const chain = CHAIN_MAP[chainId] || { 
+    id: chainId, 
+    name: `Chain ${chainId}`,
+    nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: [] } },
+  } as Chain;
+
+  return createPublicClient({
+    chain,
+    transport: http(),
+  });
+}
 
 // Create wallet client from browser provider (MetaMask)
 export async function createWalletClientFromProvider() {
@@ -14,7 +37,7 @@ export async function createWalletClientFromProvider() {
   }
 
   const walletClient = createWalletClient({
-    chain: mainnet,
+    chain: arcTestnet,
     transport: custom(window.ethereum),
   });
 

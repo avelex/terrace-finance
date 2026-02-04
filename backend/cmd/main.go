@@ -13,7 +13,6 @@ import (
 	cctp_client "github.com/avelex/terrace-finance/backend/internal/circle/cctp/client"
 	cctp_processor "github.com/avelex/terrace-finance/backend/internal/circle/cctp/processor"
 	gateway_client "github.com/avelex/terrace-finance/backend/internal/circle/gateway/client"
-	"github.com/avelex/terrace-finance/backend/internal/event_handler"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 	"github.com/avelex/terrace-finance/backend/internal/repository"
 	"github.com/avelex/terrace-finance/backend/internal/services/network"
@@ -23,7 +22,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	eventscale "github.com/eventscale/eventscale/pkg/sdk-go"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/rs/zerolog/log"
@@ -31,6 +29,7 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
@@ -66,10 +65,10 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 
-	ectx, err := eventscale.Connect(ctx, conf.EventscaleURL)
-	if err != nil {
-		return fmt.Errorf("connect to eventscale: %w", err)
-	}
+	// ectx, err := eventscale.Connect(ctx, conf.EventscaleURL)
+	// if err != nil {
+	// 	return fmt.Errorf("connect to eventscale: %w", err)
+	// }
 
 	cctpClient := cctp_client.NewClient()
 	gatewayClient := gateway_client.NewClient()
@@ -90,35 +89,36 @@ func run(ctx context.Context) error {
 	}
 
 	cctpProcessor := cctp_processor.New(cctpClient, repo)
-	transactor := transactor.NewTransactor(enum.ARC_DOMAIN, domains, repo, userRepo)
+	transactor := transactor.NewTransactor(enum.BASE_DOMAIN, domains, repo, userRepo)
 
 	walletService := wallet.NewService(conf.Protocol, gatewayClient, networkService, userRepo)
 	strategyService := strategy.NewService(transactor, aaveRepo, strategyRepo, cctpClient)
-	eventHandler := event_handler.NewEventHandler(repo, strategyService)
+	//eventHandler := event_handler.NewEventHandler(repo, strategyService)
 
 	apiHandler := api.NewHandler(strategyService, walletService)
 
 	echoRouter := echo.New()
 	apiGroup := echoRouter.Group("/api")
+	apiGroup.Use(middleware.CORS())
 
 	apiHandler.Register(apiGroup)
 
-	terraceSub, err := eventscale.SubscribeEventBlock(ectx, eventHandler.Handle,
-		eventscale.WithEventBlockConsumerName("terrace-operator"),
-	)
-	if err != nil {
-		return fmt.Errorf("subscribe to eventscale: %w", err)
-	}
+	// terraceSub, err := eventscale.SubscribeEventBlock(ectx, eventHandler.Handle,
+	// 	eventscale.WithEventBlockConsumerName("terrace-operator"),
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("subscribe to eventscale: %w", err)
+	// }
 
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
 
-	go func() {
-		log.Info().Msg("subscribed to terrace contracts")
+	// go func() {
+	// 	log.Info().Msg("subscribed to terrace contracts")
 
-		defer wg.Done()
-		terraceSub.Start(ctx)
-	}()
+	// 	defer wg.Done()
+	// 	terraceSub.Start(ctx)
+	// }()
 
 	go func() {
 		log.Info().Msg("started CCTP processor")
@@ -142,6 +142,11 @@ func run(ctx context.Context) error {
 	}()
 
 	<-ctx.Done()
+
+	if err := echoRouter.Shutdown(context.Background()); err != nil {
+		return fmt.Errorf("shutdown API server: %w", err)
+	}
+
 	wg.Wait()
 
 	return nil

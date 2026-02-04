@@ -261,3 +261,42 @@ body {
     gap: 16px;
   }
 }
+
+/* Balances wrapper for button placement */
+.balances-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Unify Button */
+.unify-button {
+  width: 100%;
+  max-width: 320px;
+  padding: 16px;
+  border: 1.5px solid var(--foreground);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.unify-button:hover:not(:disabled) {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.unify-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.unify-error {
+  font-size: 13px;
+  color: #dc2626;
+  text-align: center;
+  max-width: 320px;
+}

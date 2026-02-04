@@ -16,7 +16,7 @@ type balancesResponse struct {
 func (b *balancesResponse) Map() map[enum.CircleDomain]decimal.Decimal {
 	out := make(map[enum.CircleDomain]decimal.Decimal)
 	for _, balance := range b.Balances {
-		out[balance.Domain] = balance.Balance
+		out[balance.Domain] = balance.Balance.Mul(decimal.NewFromInt(1e6))
 	}
 	return out
 }
@@ -29,11 +29,11 @@ type balancesRequest struct {
 type balanceSource struct {
 	Depositor string            `json:"depositor"`
 	Domain    enum.CircleDomain `json:"domain"`
-	Balance   decimal.Decimal   `json:"balance,omitempty"`
+	Balance   decimal.Decimal   `json:"balance"`
 }
 
 func newBalancesRequest(depositor common.Address, domains []enum.CircleDomain) *balancesRequest {
-	sources := make([]balanceSource, len(domains))
+	sources := make([]balanceSource, 0, len(domains))
 	for _, domain := range domains {
 		sources = append(sources, balanceSource{
 			Depositor: depositor.String(),

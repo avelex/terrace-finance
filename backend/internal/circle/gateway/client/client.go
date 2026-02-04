@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,11 +17,15 @@ import (
 	"go.uber.org/ratelimit"
 )
 
-const baseURL = "https://gateway-api.circle.com/v1"
+const baseURL = "https://gateway-api-testnet.circle.com/v1"
 
 const (
 	balancesPath = "/balances"
 	transferPath = "/transfer"
+)
+
+var (
+	ErrUnifiedBalanceNotFound = errors.New("unified balance not found")
 )
 
 type Client struct {
@@ -38,6 +43,7 @@ func NewClient() *Client {
 func (c *Client) Balances(ctx context.Context, address common.Address, domains []enum.CircleDomain) (map[enum.CircleDomain]decimal.Decimal, error) {
 	u := buildBalancesURL()
 	req := newBalancesRequest(address, domains)
+
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
@@ -53,6 +59,7 @@ func (c *Client) Balances(ctx context.Context, address common.Address, domains [
 
 func (c *Client) CreateTransferAttestation(ctx context.Context, intents []models.BurnIntent) (TransferRequest, error) {
 	u := buildTransferURL()
+
 	body, err := json.Marshal(intents)
 	if err != nil {
 		return TransferRequest{}, fmt.Errorf("marshal request: %w", err)
@@ -74,6 +81,8 @@ func (c *Client) doRequest(ctx context.Context, url string, method string, body 
 		return fmt.Errorf("create request: %w", err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("do request: %w", err)
@@ -86,6 +95,8 @@ func (c *Client) doRequest(ctx context.Context, url string, method string, body 
 			return fmt.Errorf("decode response: %w", err)
 		}
 		return nil
+	case http.StatusBadRequest:
+		return ErrUnifiedBalanceNotFound
 	default:
 		return fmt.Errorf("failed request: %d", resp.StatusCode)
 	}

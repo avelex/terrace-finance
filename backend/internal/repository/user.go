@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/uptrace/bun"
 )
 
@@ -23,7 +24,7 @@ func NewUserRepository(db *bun.DB) *UserRepository {
 
 func (r *UserRepository) InitiateUserDepositFlow(ctx context.Context, deposit models.UserDeposit, permits []models.UserUnifiedPermits) error {
 	err := r.db.RunInTx(ctx, &sql.TxOptions{}, func(ctxTx context.Context, tx bun.Tx) error {
-		_, err := tx.NewInsert().Model(deposit).Exec(ctxTx)
+		_, err := tx.NewInsert().Model(&deposit).Exec(ctxTx)
 		if err != nil {
 			return fmt.Errorf("unable to create user deposit: %w", err)
 		}
@@ -47,10 +48,10 @@ func (r *UserRepository) UpdateUserUnifiedPermitsSignatures(ctx context.Context,
 		for _, permit := range permits {
 			_, err := tx.NewUpdate().
 				Model(&models.UserUnifiedPermits{}).
+				Set("signature = ?", permit.Signature).
 				Where("deposit_id = ?", permit.DepositID).
 				Where("owner = ?", permit.Owner).
 				Where("domain = ?", permit.Domain).
-				Set("signature = ?", permit.Signature).
 				Exec(ctxTx)
 			if err != nil {
 				return fmt.Errorf("unable to update user permit: %w", err)
@@ -69,9 +70,9 @@ func (r *UserRepository) UpdateUserUnifiedPermitsSignatures(ctx context.Context,
 func (r *UserRepository) SaveDepositAttestationAndSignature(ctx context.Context, id uuid.UUID, attestation, signature string) error {
 	_, err := r.db.NewUpdate().
 		Model(&models.UserDeposit{}).
-		Where("id = ?", id).
 		Set("attestation = ?", attestation).
 		Set("signature = ?", signature).
+		Where("id = ?", id).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to save deposit attestation and signature: %w", err)
@@ -95,16 +96,21 @@ func (r *UserRepository) GetPendingPermitDeposits(ctx context.Context) ([]models
 }
 
 func (r *UserRepository) UpdatePermitDepositTxHash(ctx context.Context, id string, owner common.Address, domain uint32, txHash common.Hash) error {
-	_, err := r.db.NewUpdate().
-		Model(&models.UserUnifiedPermits{}).
-		Where("deposit_id = ?", id).
-		Where("owner = ?", owner).
-		Where("domain = ?", domain).
+	log.Info().Msgf("update permit deposit tx hash: %s, %s, %d, %s", id, owner, domain, txHash)
+
+	res, err := r.db.NewUpdate().
+		Model((*models.UserUnifiedPermits)(nil)).
 		Set("tx_hash = ?", txHash.String()).
 		Set("deposited_at = ?", time.Now()).
-		Exec(ctx)
+		Where("deposit_id = ?", id).
+		Where("owner = ?", owner.String()).
+		Where("domain = ?", domain).Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to update permit deposit tx hash: %w", err)
+	}
+
+	if rowsAffected, err := res.RowsAffected(); err == nil && rowsAffected == 0 {
+		log.Warn().Msg("no rows affected")
 	}
 
 	return nil

@@ -11,8 +11,7 @@ CREATE TABLE user_deposits (
     deposit_tx_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     unified_at TIMESTAMPTZ,
-    deposited_at TIMESTAMPTZ,
-    PRIMARY KEY (id, owner)
+    deposited_at TIMESTAMPTZ
 );
 
 CREATE TABLE user_unified_permits (
