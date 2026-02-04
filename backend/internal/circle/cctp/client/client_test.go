@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/avelex/terrace-finance/backend/internal/cctp/client"
+	"github.com/avelex/terrace-finance/backend/internal/circle/cctp/client"
 
 	"github.com/stretchr/testify/require"
 )

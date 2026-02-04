@@ -10,8 +10,8 @@ import (
 	"github.com/avelex/terrace-finance/backend/config"
 	"github.com/avelex/terrace-finance/backend/db"
 	"github.com/avelex/terrace-finance/backend/internal/api"
-	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
-	"github.com/avelex/terrace-finance/backend/internal/cctp/processor"
+	cctp_client "github.com/avelex/terrace-finance/backend/internal/circle/cctp/client"
+	"github.com/avelex/terrace-finance/backend/internal/circle/cctp/processor"
 	"github.com/avelex/terrace-finance/backend/internal/event_handler"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 	"github.com/avelex/terrace-finance/backend/internal/repository"
@@ -84,7 +84,7 @@ func run(ctx context.Context) error {
 	manager := strategy.NewManager(transactor, aaveRepo, strategyRepo, cctpClient)
 	eventHandler := event_handler.NewEventHandler(repo, manager)
 
-	apiHandler := api.NewHandler(manager)
+	apiHandler := api.NewHandler(manager, nil)
 
 	echoRouter := echo.New()
 	apiGroup := echoRouter.Group("/api")
@@ -135,13 +135,13 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func connectDomainTransactors(ctx context.Context, cfg config.Config) (map[uint32]*transactor.DomainTransactor, error) {
+func connectDomainTransactors(ctx context.Context, cfg config.Config) (map[enum.CircleDomain]*transactor.DomainTransactor, error) {
 	pk, err := crypto.HexToECDSA(cfg.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("load private key: %w", err)
 	}
 
-	transactors := make(map[uint32]*transactor.DomainTransactor)
+	transactors := make(map[enum.CircleDomain]*transactor.DomainTransactor)
 
 	for _, network := range cfg.Networks {
 		client, err := ethclient.DialContext(ctx, network.URL)
@@ -154,7 +154,7 @@ func connectDomainTransactors(ctx context.Context, cfg config.Config) (map[uint3
 			return nil, fmt.Errorf("create transactor for %s: %w", network.Name, err)
 		}
 
-		transactors[network.Domain] = transactor
+		transactors[enum.CircleDomain(network.Domain)] = transactor
 	}
 
 	return transactors, nil

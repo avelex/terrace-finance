@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
+	cctp_client "github.com/avelex/terrace-finance/backend/internal/circle/cctp/client"
 	"github.com/avelex/terrace-finance/backend/internal/models"
 
 	"github.com/rs/zerolog/log"

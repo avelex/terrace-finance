@@ -21,12 +21,12 @@ type Repository interface {
 }
 
 type Transactor struct {
-	hubDomain uint32
-	domains   map[uint32]*DomainTransactor
+	hubDomain enum.CircleDomain
+	domains   map[enum.CircleDomain]*DomainTransactor
 	repo      Repository
 }
 
-func NewTransactor(hubDomain uint32, domains map[uint32]*DomainTransactor, repo Repository) *Transactor {
+func NewTransactor(hubDomain enum.CircleDomain, domains map[enum.CircleDomain]*DomainTransactor, repo Repository) *Transactor {
 	return &Transactor{
 		hubDomain: hubDomain,
 		domains:   domains,
@@ -50,7 +50,7 @@ func (t *Transactor) Start(ctx context.Context) {
 	}
 }
 
-func (t *Transactor) TerraceBalance(ctx context.Context, domain uint32, token common.Address) (*big.Int, error) {
+func (t *Transactor) TerraceBalance(ctx context.Context, domain enum.CircleDomain, token common.Address) (*big.Int, error) {
 	dt, exists := t.domains[domain]
 	if !exists {
 		return nil, fmt.Errorf("domain %d not found", domain)
@@ -59,11 +59,11 @@ func (t *Transactor) TerraceBalance(ctx context.Context, domain uint32, token co
 	return dt.TerraceBalanceOf(ctx, token)
 }
 
-func (t *Transactor) TerraceAddress(domain uint32) common.Address {
+func (t *Transactor) TerraceAddress(domain enum.CircleDomain) common.Address {
 	return t.domains[domain].contract
 }
 
-func (t *Transactor) SendAllFunds(ctx context.Context, srcDomain, dstDomain uint32, maxFee *big.Int) (string, error) {
+func (t *Transactor) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain, maxFee *big.Int) (string, error) {
 	dt, exists := t.domains[srcDomain]
 	if !exists {
 		return "", fmt.Errorf("domain %d not found", srcDomain)
@@ -88,7 +88,7 @@ func (t *Transactor) SendAllFunds(ctx context.Context, srcDomain, dstDomain uint
 	}
 }
 
-func (t *Transactor) BatchExecute(ctx context.Context, domain uint32, targets []common.Address, selectors [][]byte, data [][]byte, proofs [][][32]byte) (string, error) {
+func (t *Transactor) BatchExecute(ctx context.Context, domain enum.CircleDomain, targets []common.Address, selectors [][]byte, data [][]byte, proofs [][][32]byte) (string, error) {
 	dt, exists := t.domains[domain]
 	if !exists {
 		return "", fmt.Errorf("domain %d not found", domain)
@@ -122,7 +122,7 @@ func (t *Transactor) process(ctx context.Context) error {
 			continue
 		}
 
-		go func(domain uint32, message []byte, attestation []byte) {
+		go func(domain enum.CircleDomain, message []byte, attestation []byte) {
 			defer wg.Done()
 
 			receipt, err := t.domains[domain].ReceiveMessage(message, attestation)
@@ -135,7 +135,7 @@ func (t *Transactor) process(ctx context.Context) error {
 				log.Error().Err(err).Msg("update received tx hash failed")
 				return
 			}
-		}(op.ToDomain, msg, att)
+		}(enum.CircleDomain(op.ToDomain), msg, att)
 	}
 
 	wg.Wait()

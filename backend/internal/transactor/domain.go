@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/avelex/terrace-finance/backend/internal/abi"
+	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -86,9 +87,9 @@ func (dt *DomainTransactor) SendAllFundsToHub(maxFee *big.Int, minFinalityThresh
 	return receipt, nil
 }
 
-func (dt *DomainTransactor) SendAllFundsToTerrace(domain uint32, maxFee *big.Int, minFinalityThreshold uint32) (*types.Receipt, error) {
+func (dt *DomainTransactor) SendAllFundsToTerrace(domain enum.CircleDomain, maxFee *big.Int, minFinalityThreshold uint32) (*types.Receipt, error) {
 	receipt, err := dt.sendTransaction(context.Background(), "SendAllToTerrace", func() (*types.Transaction, error) {
-		return dt.transactor.SendAllToTerrace(dt.opts, domain, maxFee, minFinalityThreshold)
+		return dt.transactor.SendAllToTerrace(dt.opts, uint32(domain), maxFee, minFinalityThreshold)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send all funds to terrace: %w", err)

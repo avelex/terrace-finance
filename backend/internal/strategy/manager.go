@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	cctp_client "github.com/avelex/terrace-finance/backend/internal/cctp/client"
+	cctp_client "github.com/avelex/terrace-finance/backend/internal/circle/cctp/client"
 	"github.com/avelex/terrace-finance/backend/internal/models"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 	"github.com/avelex/terrace-finance/backend/internal/repository"
@@ -55,8 +55,8 @@ func (m *Manager) UpdateReserveData(ctx context.Context, reserve models.ReserveD
 	return nil
 }
 
-func (m *Manager) SendAllFunds(ctx context.Context, srcDomain, dstDomain uint32) (string, error) {
-	fees, err := m.cctp.Fees(ctx, srcDomain, dstDomain)
+func (m *Manager) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error) {
+	fees, err := m.cctp.Fees(ctx, uint32(srcDomain), uint32(dstDomain))
 	if err != nil {
 		return "", fmt.Errorf("get fees: %w", err)
 	}
@@ -72,7 +72,7 @@ func (m *Manager) SendAllFunds(ctx context.Context, srcDomain, dstDomain uint32)
 	return txHash, nil
 }
 
-func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain uint32) (string, error) {
+func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
 	network := enum.NetworkByDomain(domain)
 	usdc := enum.USDC_MAPPING[network]
 	aavePool := enum.AAVE_V3[network]
@@ -82,12 +82,12 @@ func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain uint32) (st
 		return "", fmt.Errorf("get terrace balance: %w", err)
 	}
 
-	supplyStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, domain, "supply")
+	supplyStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "supply")
 	if err != nil {
 		return "", fmt.Errorf("get supply strategy: %w", err)
 	}
 
-	approveStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, domain, "approve")
+	approveStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "approve")
 	if err != nil {
 		return "", fmt.Errorf("get approve strategy: %w", err)
 	}
@@ -115,7 +115,7 @@ func (m *Manager) SupplyAllFundsToAaveV3(ctx context.Context, domain uint32) (st
 	return txHash, nil
 }
 
-func (m *Manager) WithdrawAllFundsFromAaveV3(ctx context.Context, domain uint32) (string, error) {
+func (m *Manager) WithdrawAllFundsFromAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
 	network := enum.NetworkByDomain(domain)
 	usdc := enum.USDC_MAPPING[network]
 
@@ -124,7 +124,7 @@ func (m *Manager) WithdrawAllFundsFromAaveV3(ctx context.Context, domain uint32)
 		return "", fmt.Errorf("encode withdraw data: %w", err)
 	}
 
-	withdrawStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, domain, "withdraw")
+	withdrawStrategy, err := m.strategyRepo.GetByDomainAndName(ctx, uint32(domain), "withdraw")
 	if err != nil {
 		return "", fmt.Errorf("get withdraw strategy: %w", err)
 	}
