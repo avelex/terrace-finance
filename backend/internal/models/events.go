@@ -36,6 +36,11 @@ type SendFunds struct {
 }
 
 func (s SendFunds) BridgeOp() BridgeOp {
+	sentAt := time.Unix(s.Timestamp, 0)
+	if sentAt.IsZero() {
+		sentAt = time.Now()
+	}
+
 	return BridgeOp{
 		ID:          common.BytesToHash(s.ID[:]).String(),
 		FromTerrace: s.FromTerrace.String(),
@@ -44,7 +49,7 @@ func (s SendFunds) BridgeOp() BridgeOp {
 		ToDomain:    s.ToDomain,
 		SendAmount:  s.Amount.String(),
 		SentTxHash:  s.TxHash.String(),
-		SentAt:      time.Unix(s.Timestamp, 0),
+		SentAt:      sentAt,
 	}
 }
 

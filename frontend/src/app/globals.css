@@ -463,12 +463,13 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-start;
+  width: 100%;
 }
 
 /* Bridge Card */
 .bridge-card {
   width: 100%;
-  max-width: 320px;
+  max-width: 500px;
 }
 
 .bridge-form {

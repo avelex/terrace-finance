@@ -31,10 +31,15 @@ func (r *BridgeRepository) CreateBridgeOp(ctx context.Context, send models.SendF
 }
 
 func (r *BridgeRepository) CompleteBridgeOp(ctx context.Context, received models.ReceivedFunds) error {
+	receivedAt := time.Unix(received.Timestamp, 0)
+	if receivedAt.IsZero() {
+		receivedAt = time.Now()
+	}
+
 	_, err := r.db.NewUpdate().Model(new(models.BridgeOp)).
 		Set("received_amount = ?", received.Amount.String()).
 		Set("received_tx_hash = ?", received.TxHash.String()).
-		Set("received_at = ?", time.Unix(received.Timestamp, 0)).
+		Set("received_at = ?", receivedAt).
 		Where("id = ?", common.BytesToHash(received.ID[:]).String()).
 		Exec(ctx)
 	if err != nil {

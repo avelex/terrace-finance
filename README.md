@@ -22,3 +22,4 @@ Decentralized cross-chain yield protocol
 | Arc | 0x851addF749C87F1159F30399F2ca160F8Ccdb6B1 |
 | Ethereum | 0x48FE48c34Fd0A4ECE33BF4f0770DE87435D73C50 |
 | Base | 0xa87b4A187f1adB4332DbFfeB664f63a26EBc882e |
+| Avalanche | 0xd08E361585f0c0e953e98C5D2Fa83e7d67e39013 |

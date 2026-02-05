@@ -13,7 +13,7 @@ networks:
     blocks_proc:
       batch_limit: 100
       interval: 2s
-      start_from: 25433927
+      # start_from: 25433927
   - name: ethereum
     rpc: https://ethereum-sepolia-rpc.publicnode.com
     rate_limit:
@@ -22,7 +22,7 @@ networks:
     blocks_proc:
       batch_limit: 100
       interval: 2s
-      start_from: 10196278
+      # start_from: 10196278
   - name: base
     rpc: https://base-sepolia-rpc.publicnode.com
     rate_limit:
@@ -31,7 +31,16 @@ networks:
     blocks_proc:
       batch_limit: 100
       interval: 2s
-      start_from: 37261654
+      # start_from: 37261654
+  - name: avalanche
+    rpc: https://avalanche-fuji-c-chain-rpc.publicnode.com
+    rate_limit:
+      per: 1s
+      limit: 5
+    blocks_proc:
+      batch_limit: 100
+      interval: 2s
+      # start_from: 51513600
 events:
   - name: SendFunds
     signature: event SendFunds(bytes32 id, address fromTerrace, uint32 fromDomain, address toTerrace, uint32 toDomain, uint256 amount)
@@ -42,6 +51,8 @@ events:
         0x48FE48c34Fd0A4ECE33BF4f0770DE87435D73C50: Vault
       base:
         0xa87b4A187f1adB4332DbFfeB664f63a26EBc882e: Vault
+      avalanche:
+        0xd08E361585f0c0e953e98C5D2Fa83e7d67e39013: Vault
   - name: ReceivedFunds
     signature: event ReceivedFunds(bytes32 id, address fromTerrace, uint32 fromDomain, address toTerrace, uint32 toDomain, uint256 amount)
     networks:
@@ -51,4 +62,6 @@ events:
         0x48FE48c34Fd0A4ECE33BF4f0770DE87435D73C50: Vault
       base:
         0xa87b4A187f1adB4332DbFfeB664f63a26EBc882e: Vault
+      avalanche:
+        0xd08E361585f0c0e953e98C5D2Fa83e7d67e39013: Vault
 

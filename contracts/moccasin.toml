@@ -57,7 +57,7 @@ hub_domain = 26
 [networks.avalanche_fuji]
 url = "https://avalanche-fuji-c-chain-rpc.publicnode.com"
 explorer_uri = "https://testnet.snowtrace.io/"
-explorer_type = "etherscan"
+explorer_type = "blockscout"
 chain_id = 43113
 fork = false
 

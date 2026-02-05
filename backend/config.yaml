@@ -18,6 +18,7 @@ networks:
   - name: "avalanche"
     domain: 1
     rpc_url: "https://avalanche-fuji-c-chain-rpc.publicnode.com"
+    vault: "0xd08E361585f0c0e953e98C5D2Fa83e7d67e39013"
 
     
     
