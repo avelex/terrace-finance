@@ -72,8 +72,7 @@ var GATEWAY_MINT_MAPPING = map[string]common.Address{
 }
 
 var AAVE_V3 = map[string]common.Address{
-	BASE_NETWORK:     common.HexToAddress("0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"),
-	ARBITRUM_NETWORK: common.HexToAddress("0x794a61358D6845594F94dc1DB02A252b5b4814aD"),
+	ETHEREUM_NETWORK: common.HexToAddress("0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951"),
 }
 
 var DomainNetworkMapping = map[CircleDomain]string{

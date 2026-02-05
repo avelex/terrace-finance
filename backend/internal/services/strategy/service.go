@@ -57,7 +57,10 @@ func (s *Service) UpdateReserveData(ctx context.Context, reserve models.ReserveD
 func (s *Service) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
 	network := enum.NetworkByDomain(domain)
 	usdc := enum.USDC_MAPPING[network]
-	aavePool := enum.AAVE_V3[network]
+	aavePool, exists := enum.AAVE_V3[network]
+	if !exists {
+		return "", fmt.Errorf("aave pool not supported for network: %s", network)
+	}
 
 	terraceBalance, err := s.transactor.TerraceBalance(ctx, domain, usdc)
 	if err != nil {
