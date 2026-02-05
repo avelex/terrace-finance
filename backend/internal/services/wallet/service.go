@@ -114,9 +114,16 @@ func (s *Service) ProtocolBalances(ctx context.Context, user common.Address) (*r
 	}, nil
 }
 
+func (s *Service) UserDeposits(ctx context.Context, user common.Address) ([]models.UserDeposit, error) {
+	return s.repo.GetUserDeposits(ctx, user)
+}
+
+func (s *Service) UserUnifyDeposits(ctx context.Context, user common.Address) ([]models.UserUnifiedPermits, error) {
+	return s.repo.GetUserUnifiedPermits(ctx, user)
+}
+
 func (s *Service) UnifyUSDC(ctx context.Context, user common.Address, domains []enum.CircleDomain) (*response.PermitPayload, error) {
 	permitsPayload := make(map[enum.CircleDomain]string)
-	totalBalance := big.NewInt(0)
 	permits := make([]models.UserUnifiedPermits, 0, len(domains))
 	depositID := uuid.New()
 
@@ -172,9 +179,8 @@ func (s *Service) UnifyUSDC(ctx context.Context, user common.Address, domains []
 		}
 
 		permitsPayload[domain] = string(bytes)
-		totalBalance.Add(totalBalance, usdcBalance)
 		permits = append(permits, models.UserUnifiedPermits{
-			DepositID:     depositID,
+			ID:            depositID,
 			Owner:         user.String(),
 			Token:         usdcAddress.String(),
 			Value:         usdcBalance.String(),
@@ -184,20 +190,12 @@ func (s *Service) UnifyUSDC(ctx context.Context, user common.Address, domains []
 		})
 	}
 
-	userDeposit := models.UserDeposit{
-		ID:              depositID,
-		Address:         user.String(),
-		Value:           totalBalance.String(),
-		DestDomain:      uint32(s.protocol.Hub),
-		DestGatewayMint: enum.GATEWAY_MINT_MAPPING[enum.NetworkByDomain(s.protocol.Hub)].String(),
-	}
-
-	if err := s.repo.InitiateUserDepositFlow(ctx, userDeposit, permits); err != nil {
+	if err := s.repo.InitiateUserDepositFlow(ctx, permits); err != nil {
 		return nil, fmt.Errorf("unable to initiate user deposit flow: %w", err)
 	}
 
 	return &response.PermitPayload{
-		ID:      userDeposit.ID.String(),
+		ID:      depositID.String(),
 		Domains: permitsPayload,
 	}, nil
 }
@@ -207,7 +205,7 @@ func (s *Service) SaveUnifyPermitsSignatures(ctx context.Context, user common.Ad
 
 	for domain, sig := range signedPermits.Domains {
 		permits = append(permits, models.UserUnifiedPermits{
-			DepositID: signedPermits.ID,
+			ID:        signedPermits.ID,
 			Owner:     user.String(),
 			Domain:    uint32(domain),
 			Signature: sig,
@@ -221,9 +219,19 @@ func (s *Service) SaveUnifyPermitsSignatures(ctx context.Context, user common.Ad
 	return nil
 }
 
-func (s *Service) SaveDepositAttestationAndSignature(ctx context.Context, _ common.Address, deposit request.DepositAndStake) error {
-	if err := s.repo.SaveDepositAttestationAndSignature(ctx, deposit.ID, deposit.Attestation, deposit.Signature); err != nil {
-		return fmt.Errorf("failed to save deposit attestation and signature: %w", err)
+func (s *Service) InitDepositAndStake(ctx context.Context, user common.Address, deposit request.DepositAndStake) error {
+	userDeposit := models.UserDeposit{
+		ID:              uuid.New(),
+		Address:         user.String(),
+		Value:           deposit.Amount.String(),
+		DestDomain:      uint32(s.protocol.Hub),
+		DestGatewayMint: enum.GATEWAY_MINT_MAPPING[enum.NetworkByDomain(s.protocol.Hub)].String(),
+		Attestation:     deposit.Attestation,
+		Signature:       deposit.Signature,
+	}
+
+	if err := s.repo.CreateUserDeposit(ctx, userDeposit); err != nil {
+		return fmt.Errorf("failed to create user deposit: %w", err)
 	}
 
 	return nil

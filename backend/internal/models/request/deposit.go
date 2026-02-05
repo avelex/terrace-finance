@@ -1,9 +1,9 @@
 package request
 
-import "github.com/google/uuid"
+import "github.com/shopspring/decimal"
 
 type DepositAndStake struct {
-	ID          uuid.UUID `json:"id"`
-	Attestation string    `json:"attestation"`
-	Signature   string    `json:"signature"`
+	Amount      decimal.Decimal `json:"amount"`
+	Attestation string          `json:"attestation"`
+	Signature   string          `json:"signature"`
 }

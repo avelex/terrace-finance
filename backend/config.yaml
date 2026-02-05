@@ -1,12 +1,12 @@
 protocol:
   hub: 26
-  stablecoin: "0x66a6d929663EADEDf5E628334F280d5D64F16966"
-  staking: "0x741F2E9ade5B68B7eEd8729a2Ec6B2F051Fd2C05"
+  stablecoin: "0x851addF749C87F1159F30399F2ca160F8Ccdb6B1"
+  staking: "0xA4c3C583432A34f812A5307fA6a8A4ec6D529Fc0"
 networks:
   - name: "arc"
     domain: 26
     rpc_url: "https://rpc.testnet.arc.network"
-    vault: "0x66a6d929663EADEDf5E628334F280d5D64F16966"
+    vault: "0x851addF749C87F1159F30399F2ca160F8Ccdb6B1"
   - name: "ethereum"
     domain: 0
     rpc_url: "https://ethereum-sepolia-rpc.publicnode.com"

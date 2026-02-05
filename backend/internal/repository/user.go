@@ -22,14 +22,9 @@ func NewUserRepository(db *bun.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) InitiateUserDepositFlow(ctx context.Context, deposit models.UserDeposit, permits []models.UserUnifiedPermits) error {
+func (r *UserRepository) InitiateUserDepositFlow(ctx context.Context, permits []models.UserUnifiedPermits) error {
 	err := r.db.RunInTx(ctx, &sql.TxOptions{}, func(ctxTx context.Context, tx bun.Tx) error {
-		_, err := tx.NewInsert().Model(&deposit).Exec(ctxTx)
-		if err != nil {
-			return fmt.Errorf("unable to create user deposit: %w", err)
-		}
-
-		_, err = tx.NewInsert().Model(&permits).Exec(ctxTx)
+		_, err := tx.NewInsert().Model(&permits).Exec(ctxTx)
 		if err != nil {
 			return fmt.Errorf("unable to create user permits: %w", err)
 		}
@@ -49,7 +44,7 @@ func (r *UserRepository) UpdateUserUnifiedPermitsSignatures(ctx context.Context,
 			_, err := tx.NewUpdate().
 				Model(&models.UserUnifiedPermits{}).
 				Set("signature = ?", permit.Signature).
-				Where("deposit_id = ?", permit.DepositID).
+				Where("id = ?", permit.ID).
 				Where("owner = ?", permit.Owner).
 				Where("domain = ?", permit.Domain).
 				Exec(ctxTx)
@@ -62,6 +57,17 @@ func (r *UserRepository) UpdateUserUnifiedPermitsSignatures(ctx context.Context,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to update user unified permits signatures: %w", err)
+	}
+
+	return nil
+}
+
+func (r *UserRepository) CreateUserDeposit(ctx context.Context, deposit models.UserDeposit) error {
+	_, err := r.db.NewInsert().
+		Model(&deposit).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to create user deposit: %w", err)
 	}
 
 	return nil
@@ -102,7 +108,7 @@ func (r *UserRepository) UpdatePermitDepositTxHash(ctx context.Context, id strin
 		Model((*models.UserUnifiedPermits)(nil)).
 		Set("tx_hash = ?", txHash.String()).
 		Set("deposited_at = ?", time.Now()).
-		Where("deposit_id = ?", id).
+		Where("id = ?", id).
 		Where("owner = ?", owner.String()).
 		Where("domain = ?", domain).Exec(ctx)
 	if err != nil {
@@ -123,6 +129,7 @@ func (r *UserRepository) GetPendingHubDeposits(ctx context.Context) ([]models.Us
 		Where("attestation IS NOT NULL").
 		Where("signature IS NOT NULL").
 		Where("deposited_at IS NULL").
+		Where("reason IS NULL").
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get pending hub deposits: %w", err)
@@ -135,7 +142,7 @@ func (r *UserRepository) UpdateDepositTxHash(ctx context.Context, id string, txH
 	_, err := r.db.NewUpdate().
 		Model(&models.UserDeposit{}).
 		Where("id = ?", id).
-		Set("deposit_tx_hash = ?", txHash.String()).
+		Set("tx_hash = ?", txHash.String()).
 		Set("deposited_at = ?", time.Now()).
 		Exec(ctx)
 	if err != nil {
@@ -143,4 +150,43 @@ func (r *UserRepository) UpdateDepositTxHash(ctx context.Context, id string, txH
 	}
 
 	return nil
+}
+
+func (r *UserRepository) FailUserDeposit(ctx context.Context, id string, reason string) error {
+	_, err := r.db.NewUpdate().
+		Model(&models.UserDeposit{}).
+		Where("id = ?", id).
+		Set("reason = ?", reason).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to fail user deposit: %w", err)
+	}
+
+	return nil
+}
+
+func (r *UserRepository) GetUserDeposits(ctx context.Context, user common.Address) ([]models.UserDeposit, error) {
+	var deposits []models.UserDeposit
+	err := r.db.NewSelect().
+		Model(&deposits).
+		Where("address = ?", user.String()).
+		Scan(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get user deposits: %w", err)
+	}
+
+	return deposits, nil
+}
+
+func (r *UserRepository) GetUserUnifiedPermits(ctx context.Context, user common.Address) ([]models.UserUnifiedPermits, error) {
+	var permits []models.UserUnifiedPermits
+	err := r.db.NewSelect().
+		Model(&permits).
+		Where("owner = ?", user.String()).
+		Scan(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get user unified permits: %w", err)
+	}
+
+	return permits, nil
 }

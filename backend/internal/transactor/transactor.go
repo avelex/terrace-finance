@@ -25,6 +25,7 @@ type UserRepository interface {
 	UpdatePermitDepositTxHash(ctx context.Context, id string, owner common.Address, domain uint32, txHash common.Hash) error
 	GetPendingHubDeposits(ctx context.Context) ([]models.UserDeposit, error)
 	UpdateDepositTxHash(ctx context.Context, id string, txHash common.Hash) error
+	FailUserDeposit(ctx context.Context, id string, reason string) error
 }
 
 type Transactor struct {
@@ -204,7 +205,7 @@ func (t *Transactor) processGatewayDeposits(ctx context.Context) error {
 				return
 			}
 
-			if err := t.userRepo.UpdatePermitDepositTxHash(ctx, permit.DepositID.String(), owner, uint32(domain), receipt.TxHash); err != nil {
+			if err := t.userRepo.UpdatePermitDepositTxHash(ctx, permit.ID.String(), owner, uint32(domain), receipt.TxHash); err != nil {
 				log.Error().Err(err).Msg("update permit deposit tx hash failed")
 				return
 			}
@@ -229,19 +230,37 @@ func (t *Transactor) processGatewayMints(ctx context.Context) error {
 		attestation, err := hexutil.Decode(deposit.Attestation)
 		if err != nil {
 			log.Error().Err(err).Msg("unable to decode attestation")
-			return err
+
+			if err := t.userRepo.FailUserDeposit(ctx, deposit.ID.String(), err.Error()); err != nil {
+				log.Error().Err(err).Msg("fail user deposit failed")
+				return err
+			}
+
+			continue
 		}
 
 		sig, err := hexutil.Decode(deposit.Signature)
 		if err != nil {
 			log.Error().Err(err).Msg("unable to decode signature")
-			return err
+
+			if err := t.userRepo.FailUserDeposit(ctx, deposit.ID.String(), err.Error()); err != nil {
+				log.Error().Err(err).Msg("fail user deposit failed")
+				return err
+			}
+
+			continue
 		}
 
 		receipt, err := t.domains[t.hubDomain].DepositAndStake(attestation, sig)
 		if err != nil {
 			log.Error().Err(err).Msg("deposit and stake failed")
-			return err
+
+			if err := t.userRepo.FailUserDeposit(ctx, deposit.ID.String(), err.Error()); err != nil {
+				log.Error().Err(err).Msg("fail user deposit failed")
+				return err
+			}
+
+			continue
 		}
 
 		if err := t.userRepo.UpdateDepositTxHash(ctx, deposit.ID.String(), receipt.TxHash); err != nil {

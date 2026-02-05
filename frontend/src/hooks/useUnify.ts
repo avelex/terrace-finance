@@ -20,7 +20,6 @@ interface UseUnifyResult {
   isUnifying: boolean;
   currentStep: string | null;
   error: string | null;
-  lastUnifyId: string | null;
   unify: (address: `0x${string}`, usdcBalances: TokenBalancesByDomain) => Promise<string | null>;
 }
 
@@ -28,7 +27,6 @@ export function useUnify(): UseUnifyResult {
   const [isUnifying, setIsUnifying] = useState(false);
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastUnifyId, setLastUnifyId] = useState<string | null>(null);
 
   const unify = useCallback(async (
     address: `0x${string}`,
@@ -209,7 +207,6 @@ export function useUnify(): UseUnifyResult {
       }
 
       setCurrentStep('Complete!');
-      setLastUnifyId(id);
       return id;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -227,7 +224,6 @@ export function useUnify(): UseUnifyResult {
     isUnifying,
     currentStep,
     error,
-    lastUnifyId,
     unify,
   };
 }

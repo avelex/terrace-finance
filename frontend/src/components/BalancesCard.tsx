@@ -37,11 +37,9 @@ function BalanceList({ title, balances }: BalanceListProps) {
 export function BalancesCard() {
     const { address, isConnected } = useWallet();
     const { balances, isLoading, error, refetch } = useBalances(address);
-    const { isUnifying, currentStep: unifyStep, error: unifyError, lastUnifyId, unify } = useUnify();
+    const { isUnifying, currentStep: unifyStep, error: unifyError, unify } = useUnify();
     const { isDepositing, currentStep: depositStep, error: depositError, deposit } = useDeposit();
 
-    // Track unifyId for deposit
-    const [unifyId, setUnifyId] = useState<string | null>(null);
 
     // Check if there are any USDC balances > 0
     const hasUsdcBalance = balances?.usdc &&
@@ -56,17 +54,15 @@ export function BalancesCard() {
 
         const id = await unify(address, balances.usdc);
         if (id) {
-            setUnifyId(id);
             refetch();
         }
     };
 
     const handleDeposit = async () => {
-        if (!address || !balances?.unifiedUsdc || !unifyId) return;
+        if (!address || !balances?.unifiedUsdc) return;
 
-        const success = await deposit(address, balances.unifiedUsdc, unifyId);
+        const success = await deposit(address, balances.unifiedUsdc);
         if (success) {
-            setUnifyId(null); // Reset after successful deposit
             refetch();
         }
     };
@@ -149,7 +145,7 @@ export function BalancesCard() {
                 <button
                     className="deposit-button"
                     onClick={handleDeposit}
-                    disabled={!hasUnifiedBalance || !unifyId || isDepositing || isUnifying}
+                    disabled={!hasUnifiedBalance || isDepositing || isUnifying}
                 >
                     {isDepositing ? (depositStep || 'Processing...') : 'Deposit'}
                 </button>

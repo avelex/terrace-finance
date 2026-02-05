@@ -6,16 +6,16 @@ CREATE TABLE user_deposits (
     value TEXT NOT NULL,
     dest_domain INT NOT NULL,
     dest_gateway_mint TEXT NOT NULL,
-    attestation TEXT,
-    signature TEXT,
-    deposit_tx_hash TEXT,
+    attestation TEXT NOT NULL,
+    signature TEXT NOT NULL,
+    reason TEXT,
+    tx_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    unified_at TIMESTAMPTZ,
     deposited_at TIMESTAMPTZ
 );
 
 CREATE TABLE user_unified_permits (
-    deposit_id UUID REFERENCES user_deposits(id),
+    id UUID NOT NULL,
     owner TEXT NOT NULL,
     token TEXT NOT NULL,
     value TEXT NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE user_unified_permits (
     tx_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deposited_at TIMESTAMPTZ,
-    PRIMARY KEY (deposit_id, owner, domain)
+    PRIMARY KEY (id, owner, domain)
 );
 -- +goose StatementEnd
 

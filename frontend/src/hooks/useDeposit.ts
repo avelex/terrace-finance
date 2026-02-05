@@ -36,8 +36,8 @@ const DOMAIN_TO_CHAIN: Record<number, Chain> = {
   [CircleDomain.ARC]: arcTestnet,
 };
 
-// Max fee (2.01 USDC)
-const MAX_FEE = 2_010000n;
+// Max fee (1.0 USDC)
+const MAX_FEE = BigInt(1_000000);
 
 // EIP-712 Domain for Gateway burn intents
 const domain = {
@@ -142,7 +142,7 @@ interface UseDepositResult {
   isDepositing: boolean;
   currentStep: string | null;
   error: string | null;
-  deposit: (address: `0x${string}`, unifiedBalances: TokenBalancesByDomain, unifyId: string) => Promise<boolean>;
+  deposit: (address: `0x${string}`, unifiedBalances: TokenBalancesByDomain) => Promise<boolean>;
 }
 
 export function useDeposit(): UseDepositResult {
@@ -153,7 +153,6 @@ export function useDeposit(): UseDepositResult {
   const deposit = useCallback(async (
     address: `0x${string}`,
     unifiedBalances: TokenBalancesByDomain,
-    unifyId: string
   ): Promise<boolean> => {
     setIsDepositing(true);
     setError(null);
@@ -180,6 +179,8 @@ export function useDeposit(): UseDepositResult {
 
       // Create and sign burn intents
       const requests: { burnIntent: ReturnType<typeof burnIntentTypedData>['message']; signature: string }[] = [];
+
+      let totalAmount = BigInt(0);
 
       for (let i = 0; i < domainsWithBalance.length; i++) {
         const { domain: sourceDomain, balance } = domainsWithBalance[i];
@@ -238,7 +239,8 @@ export function useDeposit(): UseDepositResult {
           message: typedData.message,
         });
 
-        requests.push({ burnIntent: typedData.message, signature });
+        requests.push({ burnIntent: typedData.message, signature })
+        totalAmount += balance;
       }
 
       if (requests.length === 0) {
@@ -279,7 +281,7 @@ export function useDeposit(): UseDepositResult {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: unifyId,
+          amount: totalAmount.toString(),
           attestation,
           signature: operatorSig,
         }),

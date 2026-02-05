@@ -76,3 +76,33 @@ export interface DepositStakeRequest {
   signature: string;
 }
 
+// GET /api/wallet/:address/deposit_stake/list - Response item
+export interface UserDeposit {
+  id: string;
+  address: string;
+  value: string;
+  destDomain: number;
+  destGatewayMint: string;
+  attestation: string;
+  signature: string;
+  txHash: string;
+  reason: string;
+  createdAt: string;
+  depositedAt: string;
+}
+
+// GET /api/wallet/:address/unify/list - Response item
+export interface UserUnifiedPermit {
+  id: string;
+  owner: string;
+  token: string;
+  value: string;
+  deadline: number;
+  signature: string;
+  domain: number;
+  gatewayWallet: string;
+  txHash: string;
+  createdAt: string;
+  depositedAt: string;
+}
+

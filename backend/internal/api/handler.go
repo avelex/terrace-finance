@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/avelex/terrace-finance/backend/internal/models"
 	"github.com/avelex/terrace-finance/backend/internal/models/enum"
 	"github.com/avelex/terrace-finance/backend/internal/models/request"
 	"github.com/avelex/terrace-finance/backend/internal/models/response"
@@ -23,9 +24,11 @@ type StrategyService interface {
 
 type WalletService interface {
 	ProtocolBalances(ctx context.Context, user common.Address) (*response.ProtocolBalances, error)
+	UserUnifyDeposits(ctx context.Context, user common.Address) ([]models.UserUnifiedPermits, error)
 	UnifyUSDC(ctx context.Context, user common.Address, domains []enum.CircleDomain) (*response.PermitPayload, error)
 	SaveUnifyPermitsSignatures(ctx context.Context, user common.Address, signedPermits request.SignedPermits) error
-	SaveDepositAttestationAndSignature(ctx context.Context, user common.Address, deposit request.DepositAndStake) error
+	InitDepositAndStake(ctx context.Context, user common.Address, deposit request.DepositAndStake) error
+	UserDeposits(ctx context.Context, user common.Address) ([]models.UserDeposit, error)
 }
 
 type Handler struct {
@@ -53,8 +56,10 @@ func (h *Handler) Register(g *echo.Group) {
 	{
 		walletGroup.GET("/:address/balances", h.walletBalances)
 		walletGroup.POST("/:address/unify", h.walletUnify)
+		walletGroup.GET("/:address/unify/list", h.walletUnifyDeposits)
 		walletGroup.POST("/:address/unify/permits", h.walletUnifyPermits)
 		walletGroup.POST("/:address/deposit_stake", h.walletDepositAndStake)
+		walletGroup.GET("/:address/deposit_stake/list", h.walletDeposits)
 	}
 }
 
@@ -176,11 +181,39 @@ func (h *Handler) walletDepositAndStake(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
 	}
 
-	if err := h.walletService.SaveDepositAttestationAndSignature(c.Request().Context(), address, req); err != nil {
+	if err := h.walletService.InitDepositAndStake(c.Request().Context(), address, req); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	return nil
+}
+
+func (h *Handler) walletUnifyDeposits(c echo.Context) error {
+	address, err := parseAddress(c.Param("address"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid address")
+	}
+
+	permits, err := h.walletService.UserUnifyDeposits(c.Request().Context(), address)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, permits)
+}
+
+func (h *Handler) walletDeposits(c echo.Context) error {
+	address, err := parseAddress(c.Param("address"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid address")
+	}
+
+	deposits, err := h.walletService.UserDeposits(c.Request().Context(), address)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, deposits)
 }
 
 func parseAddress(addr string) (common.Address, error) {
