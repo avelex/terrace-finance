@@ -8,7 +8,7 @@ import { TokenBalancesByDomain, CircleDomain } from '@/lib/types';
 import { createWalletClientFromProvider } from '@/lib/wallet';
 
 // Circle Gateway API
-const GATEWAY_API_URL = 'https://gateway-api-testnet.circle.com/v1/transfer';
+const GATEWAY_TRANSFER_API_URL = 'https://gateway-api-testnet.circle.com/v1/transfer';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Destination (Arc testnet)
@@ -81,6 +81,39 @@ function randomSalt(): Hex {
   return ('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')) as Hex;
 }
 
+/**
+ * Calculate Circle Gateway fee for transfer
+ * Formula: maxFee ≥ gas fee + (transfer amount * 0.00005)
+ * - Gas fee: ~$0.01 = 10000 USDC subunits (varies by chain)
+ * - Transfer fee: 0.005% of amount (only for crosschain transfers)
+ * @see https://developers.circle.com/gateway/references/fees
+ */
+function calculateGatewayFee(
+  amount: bigint,
+  sourceDomain: number,
+  destinationDomain: number
+): bigint {
+  // Gas fees by domain (in USDC subunits, 6 decimals)
+  // These are approximate values based on network costs
+  const GAS_FEES: Record<number, bigint> = {
+    [CircleDomain.ETHEREUM]: BigInt(2000000),   // ~$2.00
+    [CircleDomain.AVAX]: BigInt(20000),       // ~$0.02
+    [CircleDomain.BASE]: BigInt(10000),        // ~$0.01 
+    [CircleDomain.ARC]: BigInt(10000),         // ~$0.01
+  };
+
+  const gasFee = GAS_FEES[sourceDomain] ?? BigInt(10000);
+
+  // Transfer fee: 0.005% (only for crosschain transfers)
+  // Same-chain transfers don't have transfer fee
+  const isCrosschain = sourceDomain !== destinationDomain;
+  const transferFee = isCrosschain
+    ? amount * BigInt(5) / BigInt(100000) // 0.005%
+    : BigInt(0);
+
+  return gasFee + transferFee;
+}
+
 // Create burn intent for a source domain
 function createBurnIntent(
   sourceDomain: number,
@@ -89,7 +122,7 @@ function createBurnIntent(
 ) {
   const sourceToken = USDC_ADDRESSES[sourceDomain];
   const destToken = USDC_ADDRESSES[DESTINATION_DOMAIN];
-  
+
   return {
     maxBlockHeight: maxUint256,
     maxFee: MAX_FEE,
@@ -184,7 +217,7 @@ export function useDeposit(): UseDepositResult {
 
       for (let i = 0; i < domainsWithBalance.length; i++) {
         const { domain: sourceDomain, balance } = domainsWithBalance[i];
-        
+
         // Skip Arc domain (destination)
         // if (sourceDomain === DESTINATION_DOMAIN) continue;
 
@@ -222,15 +255,18 @@ export function useDeposit(): UseDepositResult {
           }
         }
 
+        // Calculate fee based on source and destination domains
+        const fee = calculateGatewayFee(balance, sourceDomain, DESTINATION_DOMAIN);
+        const balanceAfterFee = balance - fee;
+
         // Create burn intent
         setCurrentStep(`Creating burn intent ${i + 1}/${domainsWithBalance.length}...`);
-        const intent = createBurnIntent(sourceDomain, balance, account);
+        const intent = createBurnIntent(sourceDomain, balanceAfterFee, account);
         const typedData = burnIntentTypedData(intent);
 
-        // Sign
         setCurrentStep(`Signing burn intent ${i + 1}/${domainsWithBalance.length}...`);
         const newWalletClient = await createWalletClientFromProvider();
-        
+
         const signature = await newWalletClient.signTypedData({
           account,
           domain: typedData.domain,
@@ -240,7 +276,7 @@ export function useDeposit(): UseDepositResult {
         });
 
         requests.push({ burnIntent: typedData.message, signature })
-        totalAmount += balance;
+        totalAmount += balanceAfterFee;
       }
 
       if (requests.length === 0) {
@@ -251,7 +287,7 @@ export function useDeposit(): UseDepositResult {
       // Send to Circle Gateway API
       setCurrentStep('Sending to Circle Gateway...');
 
-      const response = await fetch(GATEWAY_API_URL, {
+      const response = await fetch(GATEWAY_TRANSFER_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requests, (_key, value) =>
