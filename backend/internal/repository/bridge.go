@@ -99,7 +99,7 @@ func (r *BridgeRepository) UpdateMessageAndAttestation(ctx context.Context, id, 
 	return nil
 }
 
-func (r *BridgeRepository) ShowBridgeOperations(ctx context.Context, limit, offset int) ([]models.BridgeOp, int64, error) {
+func (r *BridgeRepository) GetBridgeOperations(ctx context.Context, limit, offset int) ([]models.BridgeOp, int64, error) {
 	var ops []models.BridgeOp
 	err := r.db.NewSelect().Model(&ops).
 		Order("sent_at DESC").

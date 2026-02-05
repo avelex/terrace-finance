@@ -446,6 +446,127 @@ body {
   max-width: 800px;
 }
 
+/* Vaults Card */
+.vaults-card {
+  max-width: 500px;
+}
+
+/* Explorer Container */
+.explorer-container {
+  flex-direction: column;
+  gap: 32px;
+}
+
+.explorer-top-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Bridge Card */
+.bridge-card {
+  width: 100%;
+  max-width: 320px;
+}
+
+.bridge-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bridge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1.5px solid var(--foreground);
+  border-radius: 8px;
+}
+
+.bridge-row-label {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.bridge-select {
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: right;
+}
+
+.bridge-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bridge-swap-button {
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--foreground);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: -8px 0;
+}
+
+.bridge-swap-button:hover:not(:disabled) {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.bridge-swap-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bridge-button {
+  padding: 14px;
+  border: 1.5px solid var(--foreground);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+
+.bridge-button:hover:not(:disabled) {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.bridge-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bridge-error {
+  font-size: 13px;
+  color: #dc2626;
+  text-align: center;
+}
+
+.bridge-success {
+  font-size: 13px;
+  color: #166534;
+  text-align: center;
+}
+
 /* Pagination */
 .pagination {
   display: flex;

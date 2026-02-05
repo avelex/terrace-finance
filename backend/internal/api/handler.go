@@ -23,7 +23,8 @@ type StrategyService interface {
 
 type BridgeService interface {
 	BridgeFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error)
-	ShowBridgeOperations(ctx context.Context, limit, page int) (response.PagableBridgeOps, error)
+	GetBridgeOperations(ctx context.Context, limit, page int) (response.PagableBridgeOps, error)
+	GetVaultsInfo(ctx context.Context) ([]response.VaultInfo, error)
 }
 
 type WalletService interface {
@@ -50,10 +51,11 @@ func NewHandler(ss StrategyService, ws WalletService, bs BridgeService) *Handler
 }
 
 func (h *Handler) Register(g *echo.Group) {
-	cctpGroup := g.Group("/bridge")
+	bridgeGroup := g.Group("/bridge")
 	{
-		cctpGroup.GET("/send/:src/:dst", h.bridgeSend)
-		cctpGroup.GET("/operations", h.showBridgeOperations)
+		bridgeGroup.GET("/send/:src/:dst", h.bridgeSend)
+		bridgeGroup.GET("/operations", h.showBridgeOperations)
+		bridgeGroup.GET("/vaults", h.showVaultsInfo)
 	}
 
 	strategyGroup := g.Group("/strategy")
@@ -238,12 +240,21 @@ func (h *Handler) showBridgeOperations(c echo.Context) error {
 		page = p
 	}
 
-	ops, err := h.bridgeService.ShowBridgeOperations(c.Request().Context(), limit, page)
+	ops, err := h.bridgeService.GetBridgeOperations(c.Request().Context(), limit, page)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, ops)
+}
+
+func (h *Handler) showVaultsInfo(c echo.Context) error {
+	vaultsInfo, err := h.bridgeService.GetVaultsInfo(c.Request().Context())
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, vaultsInfo)
 }
 
 func parseAddress(addr string) (common.Address, error) {

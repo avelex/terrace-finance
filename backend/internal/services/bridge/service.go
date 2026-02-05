@@ -44,8 +44,27 @@ func (s *Service) BridgeFunds(ctx context.Context, srcDomain, dstDomain enum.Cir
 	return txHash, nil
 }
 
-func (s *Service) ShowBridgeOperations(ctx context.Context, limit, page int) (response.PagableBridgeOps, error) {
-	ops, total, err := s.repo.ShowBridgeOperations(ctx, limit, page)
+func (s *Service) GetVaultsInfo(ctx context.Context) ([]response.VaultInfo, error) {
+	supportedDomains := enum.SupportedDomains()
+	vaults := make([]response.VaultInfo, 0, len(supportedDomains))
+	for _, domain := range supportedDomains {
+		address := s.transactor.TerraceAddress(domain)
+		balance, err := s.transactor.TerraceBalance(ctx, domain, enum.USDC_MAPPING[enum.NetworkByDomain(domain)])
+		if err != nil {
+			return nil, fmt.Errorf("unable to get vault balance: %w", err)
+		}
+		vaults = append(vaults, response.VaultInfo{
+			Domain:  domain,
+			Address: address,
+			Balance: decimal.NewFromBigInt(balance, 0),
+		})
+	}
+
+	return vaults, nil
+}
+
+func (s *Service) GetBridgeOperations(ctx context.Context, limit, page int) (response.PagableBridgeOps, error) {
+	ops, total, err := s.repo.GetBridgeOperations(ctx, limit, page)
 	if err != nil {
 		return response.PagableBridgeOps{}, fmt.Errorf("unable to get bridge operations: %w", err)
 	}

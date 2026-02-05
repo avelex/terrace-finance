@@ -114,6 +114,13 @@ export interface PaginatedBridgeOps {
   limit: number;
 }
 
+// GET /api/bridge/vaults - Response item
+export interface VaultInfo {
+  domain: number;
+  address: string;
+  balance: string;
+}
+
 // GET /api/wallet/:address/unify/list - Response item
 export interface UserUnifiedPermit {
   id: string;
