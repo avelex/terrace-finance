@@ -488,3 +488,17 @@ body {
   font-size: 13px;
   font-weight: 500;
 }
+
+/* Explorer Links */
+.explorer-link {
+  color: var(--foreground);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--foreground);
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.explorer-link:hover {
+  opacity: 1;
+  border-bottom-style: solid;
+}

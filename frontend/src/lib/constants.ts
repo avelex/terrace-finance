@@ -62,3 +62,29 @@ export const GAS_FEES: Record<number, bigint> = {
     [CircleDomain.BASE]: BigInt(10000),       // ~$0.01
     [CircleDomain.ARC]: BigInt(10000),        // ~$0.01
 };
+
+/**
+ * Block explorer URLs by domain (testnets)
+ */
+export const EXPLORER_URLS: Record<number, string> = {
+    [CircleDomain.ETHEREUM]: 'https://eth-sepolia.blockscout.com',
+    [CircleDomain.AVAX]: 'https://testnet.snowtrace.io',
+    [CircleDomain.BASE]: 'https://base-sepolia.blockscout.com',
+    [CircleDomain.ARC]: 'https://testnet.arcscan.app',
+};
+
+/**
+ * Get explorer URL for an address
+ */
+export function getAddressExplorerUrl(domain: number, address: string): string {
+    const baseUrl = EXPLORER_URLS[domain];
+    return baseUrl ? `${baseUrl}/address/${address}` : '#';
+}
+
+/**
+ * Get explorer URL for a transaction
+ */
+export function getTxExplorerUrl(domain: number, txHash: string): string {
+    const baseUrl = EXPLORER_URLS[domain];
+    return baseUrl ? `${baseUrl}/tx/${txHash}` : '#';
+}

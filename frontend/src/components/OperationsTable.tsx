@@ -3,7 +3,8 @@
 import { useState, memo } from 'react';
 import { useBridgeOperations } from '@/hooks/useBridgeOperations';
 import { DOMAIN_NAMES, CircleDomain } from '@/lib/types';
-import { formatUsdcValue, formatDate } from '@/lib/format';
+import { formatUsdcValue, formatDate, shortenAddress } from '@/lib/format';
+import { getAddressExplorerUrl, getTxExplorerUrl } from '@/lib/constants';
 import { StatusBadge } from './StatusBadge';
 
 const DEFAULT_LIMIT = 10;
@@ -73,14 +74,54 @@ export const OperationsTable = memo(function OperationsTable() {
                             const status = getBridgeStatus(op.receivedTxHash);
                             return (
                                 <tr key={op.id || `op-${index}`}>
-                                    <td>{getDomainName(op.fromDomain)}</td>
-                                    <td>{getDomainName(op.toDomain)}</td>
+                                    <td>
+                                        <a
+                                            href={getAddressExplorerUrl(op.fromDomain, op.fromTerrace)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="explorer-link"
+                                        >
+                                            {getDomainName(op.fromDomain)}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a
+                                            href={getAddressExplorerUrl(op.toDomain, op.toTerrace)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="explorer-link"
+                                        >
+                                            {getDomainName(op.toDomain)}
+                                        </a>
+                                    </td>
                                     <td>{formatUsdcValue(op.sendAmount)} USDC</td>
                                     <td>
                                         <StatusBadge label={status.label} variant={status.variant} />
                                     </td>
-                                    <td>{formatDate(op.sentAt)}</td>
-                                    <td>{formatDate(op.receivedAt)}</td>
+                                    <td>
+                                        {op.sentTxHash ? (
+                                            <a
+                                                href={getTxExplorerUrl(op.fromDomain, op.sentTxHash)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="explorer-link"
+                                            >
+                                                {formatDate(op.sentAt)}
+                                            </a>
+                                        ) : formatDate(op.sentAt)}
+                                    </td>
+                                    <td>
+                                        {op.receivedTxHash ? (
+                                            <a
+                                                href={getTxExplorerUrl(op.toDomain, op.receivedTxHash)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="explorer-link"
+                                            >
+                                                {formatDate(op.receivedAt)}
+                                            </a>
+                                        ) : formatDate(op.receivedAt)}
+                                    </td>
                                 </tr>
                             );
                         })}
