@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { requestAccounts, getAccounts } from '@/lib/wallet';
 
 interface WalletContextType {
@@ -73,16 +73,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setAddress(null);
     }, []);
 
+    // Memoize context value to prevent unnecessary re-renders
+    const contextValue = useMemo(() => ({
+        address,
+        isConnected,
+        isConnecting,
+        connect,
+        disconnect,
+    }), [address, isConnected, isConnecting, connect, disconnect]);
+
     return (
-        <WalletContext.Provider
-            value={{
-                address,
-                isConnected,
-                isConnecting,
-                connect,
-                disconnect,
-            }}
-        >
+        <WalletContext.Provider value={contextValue}>
             {children}
         </WalletContext.Provider>
     );

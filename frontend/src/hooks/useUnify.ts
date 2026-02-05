@@ -1,20 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Chain } from 'viem';
-import { arcTestnet, baseSepolia, sepolia, avalancheFuji } from 'viem/chains';
 import { UnifyRequest, UnifyResponse, PermitsRequest, TypedData, TokenBalancesByDomain } from '@/lib/types';
 import { createWalletClientFromProvider, createPublicClientForChain } from '@/lib/wallet';
-
-// Map chainId to chain config for adding chains to wallet
-const CHAIN_MAP: Record<number, Chain> = {
-  11155111: sepolia,
-  43113: avalancheFuji,
-  84532: baseSepolia,
-  5042002: arcTestnet,
-};
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+import { API_BASE_URL, CHAIN_ID_TO_CHAIN } from '@/lib/constants';
 
 interface UseUnifyResult {
   isUnifying: boolean;
@@ -70,25 +59,25 @@ export function useUnify(): UseUnifyResult {
 
       const signatures: Record<number, string> = {};
       const domainEntries = Object.entries(typedDataByDomain);
-      
+
       for (let i = 0; i < domainEntries.length; i++) {
         const [domainStr, typedDataRaw] = domainEntries[i];
         const domain = Number(domainStr);
-        
+
         // Backend sends typedData as JSON string, parse it
-        const typedData: TypedData = typeof typedDataRaw === 'string' 
-          ? JSON.parse(typedDataRaw) 
+        const typedData: TypedData = typeof typedDataRaw === 'string'
+          ? JSON.parse(typedDataRaw)
           : typedDataRaw;
-        
+
         // Get chainId from typedData domain (can be hex string or number)
         const requiredChainId = typedData.domain.chainId;
         if (requiredChainId) {
           const chainIdHex = typeof requiredChainId === 'string' && requiredChainId.startsWith('0x')
             ? requiredChainId
             : `0x${Number(requiredChainId).toString(16)}`;
-          
+
           setCurrentStep(`Switching to chain ${chainIdHex}...`);
-          
+
           try {
             await window.ethereum?.request({
               method: 'wallet_switchEthereumChain',
@@ -97,20 +86,20 @@ export function useUnify(): UseUnifyResult {
           } catch (switchError: unknown) {
             // Chain not recognized or not added - try to add it
             const err = switchError as { code?: number; message?: string };
-            const isUnrecognizedChain = err.code === 4902 || 
+            const isUnrecognizedChain = err.code === 4902 ||
               (err.message && err.message.toLowerCase().includes('unrecognized chain'));
-            
+
             if (isUnrecognizedChain) {
               const chainIdNum = parseInt(chainIdHex, 16);
-              const chainConfig = CHAIN_MAP[chainIdNum];
-              
+              const chainConfig = CHAIN_ID_TO_CHAIN[chainIdNum];
+
               if (!chainConfig) {
                 throw new Error(`Chain ${chainIdHex} not supported. Please add it manually.`);
               }
-              
+
               // Add the chain to wallet
               setCurrentStep(`Adding ${chainConfig.name} to wallet...`);
-              
+
               await window.ethereum?.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
@@ -118,8 +107,8 @@ export function useUnify(): UseUnifyResult {
                   chainName: chainConfig.name,
                   nativeCurrency: chainConfig.nativeCurrency,
                   rpcUrls: chainConfig.rpcUrls.default.http,
-                  blockExplorerUrls: chainConfig.blockExplorers?.default 
-                    ? [chainConfig.blockExplorers.default.url] 
+                  blockExplorerUrls: chainConfig.blockExplorers?.default
+                    ? [chainConfig.blockExplorers.default.url]
                     : undefined,
                 }],
               });
@@ -127,19 +116,19 @@ export function useUnify(): UseUnifyResult {
               throw switchError;
             }
           }
-          
+
           // Recreate wallet client after chain switch
           const newWalletClient = await createWalletClientFromProvider();
-          
+
           setCurrentStep(`Signing ${i + 1}/${domainEntries.length}...`);
 
           // Normalize chainId to number for viem
           const normalizedDomain = {
             ...typedData.domain,
-            chainId: typedData.domain.chainId 
-              ? (typeof typedData.domain.chainId === 'string' 
-                  ? parseInt(typedData.domain.chainId, 16) 
-                  : typedData.domain.chainId)
+            chainId: typedData.domain.chainId
+              ? (typeof typedData.domain.chainId === 'string'
+                ? parseInt(typedData.domain.chainId, 16)
+                : typedData.domain.chainId)
               : undefined,
           };
 
@@ -153,10 +142,10 @@ export function useUnify(): UseUnifyResult {
 
           // Verify signature using public client for this chain
           setCurrentStep(`Verifying signature ${i + 1}/${domainEntries.length}...`);
-          
+
           const chainIdNum = normalizedDomain.chainId!;
           const chainPublicClient = createPublicClientForChain(chainIdNum);
-          
+
           const isValid = await chainPublicClient.verifyTypedData({
             address: account,
             domain: normalizedDomain,

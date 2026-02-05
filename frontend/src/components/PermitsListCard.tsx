@@ -4,24 +4,8 @@ import { useMemo } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { usePermits } from '@/hooks/usePermits';
 import { DOMAIN_NAMES, CircleDomain, UserUnifiedPermit } from '@/lib/types';
-
-function formatValue(value: string): string {
-    const num = parseFloat(value) / 1e6; // USDC has 6 decimals
-    return num.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-}
-
-function formatDate(dateStr: string): string {
-    if (!dateStr || dateStr === '0001-01-01T00:00:00Z') return '-';
-    return new Date(dateStr).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
+import { formatUsdcValue, formatDate } from '@/lib/format';
+import { StatusBadge, getPermitGroupStatus } from './StatusBadge';
 
 interface GroupedPermit {
     id: string;
@@ -59,12 +43,6 @@ function groupPermitsById(permits: UserUnifiedPermit[]): GroupedPermit[] {
     return Array.from(grouped.values()).sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-}
-
-function getGroupStatus(group: GroupedPermit): { label: string; className: string } {
-    if (group.allExecuted) return { label: 'Executed', className: 'status-completed' };
-    if (group.allSigned) return { label: 'Signed', className: 'status-signed' };
-    return { label: 'Pending', className: 'status-pending' };
 }
 
 export function PermitsListCard() {
@@ -124,18 +102,16 @@ export function PermitsListCard() {
                     </thead>
                     <tbody>
                         {groupedPermits.map((group) => {
-                            const status = getGroupStatus(group);
+                            const status = getPermitGroupStatus(group.allExecuted, group.allSigned);
                             const domainNames = group.domains
                                 .map(d => DOMAIN_NAMES[d as CircleDomain] || `D${d}`)
                                 .join(', ');
                             return (
                                 <tr key={group.id}>
                                     <td>{domainNames}</td>
-                                    <td>{formatValue(group.totalValue.toString())} USDC</td>
+                                    <td>{formatUsdcValue(group.totalValue)} USDC</td>
                                     <td>
-                                        <span className={`status-badge ${status.className}`}>
-                                            {status.label}
-                                        </span>
+                                        <StatusBadge label={status.label} variant={status.variant} />
                                     </td>
                                     <td>{formatDate(group.createdAt)}</td>
                                 </tr>

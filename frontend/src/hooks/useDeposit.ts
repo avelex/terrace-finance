@@ -1,43 +1,22 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { pad, maxUint256, Hex, zeroAddress } from 'viem';
-import { Chain } from 'viem';
-import { arcTestnet, baseSepolia, sepolia, avalancheFuji } from 'viem/chains';
-import { TokenBalancesByDomain, CircleDomain } from '@/lib/types';
+import { pad, maxUint256, Hex } from 'viem';
+import { TokenBalancesByDomain } from '@/lib/types';
 import { createWalletClientFromProvider } from '@/lib/wallet';
-
-// Circle Gateway API
-const GATEWAY_TRANSFER_API_URL = 'https://gateway-api-testnet.circle.com/v1/transfer';
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
-// Destination (Arc testnet)
-const DESTINATION_DOMAIN = 26;
-const DESTINATION_RECIPIENT = '0x851addF749C87F1159F30399F2ca160F8Ccdb6B1';
-const DESTINATION_CALLER = '0x851addF749C87F1159F30399F2ca160F8Ccdb6B1';
-const GATEWAY_MINTER_ADDRESS = '0x0022222ABE238Cc2C7Bb1f21003F0a260052475B';
-
-// Gateway wallet address (same for all testnet chains)
-const GATEWAY_WALLET_ADDRESS = '0x0077777d7EBA4688BDeF3E311b846F25870A19B9';
-
-// USDC addresses by domain
-const USDC_ADDRESSES: Record<number, `0x${string}`> = {
-  [CircleDomain.ARC]: '0x3600000000000000000000000000000000000000',
-  [CircleDomain.ETHEREUM]: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-  [CircleDomain.BASE]: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-  [CircleDomain.AVAX]: '0x5425890298aed601595a70AB815c96711a31Bc65',
-};
-
-// Chain ID mapping
-const DOMAIN_TO_CHAIN: Record<number, Chain> = {
-  [CircleDomain.ETHEREUM]: sepolia,
-  [CircleDomain.AVAX]: avalancheFuji,
-  [CircleDomain.BASE]: baseSepolia,
-  [CircleDomain.ARC]: arcTestnet,
-};
-
-// Max fee (1.0 USDC)
-const MAX_FEE = BigInt(1_000000);
+import {
+  API_BASE_URL,
+  GATEWAY_TRANSFER_API_URL,
+  DESTINATION_DOMAIN,
+  DESTINATION_RECIPIENT,
+  DESTINATION_CALLER,
+  GATEWAY_MINTER_ADDRESS,
+  GATEWAY_WALLET_ADDRESS,
+  USDC_ADDRESSES,
+  DOMAIN_TO_CHAIN,
+  GAS_FEES,
+  MAX_FEE,
+} from '@/lib/constants';
 
 // EIP-712 Domain for Gateway burn intents
 const domain = {
@@ -84,8 +63,6 @@ function randomSalt(): Hex {
 /**
  * Calculate Circle Gateway fee for transfer
  * Formula: maxFee ≥ gas fee + (transfer amount * 0.00005)
- * - Gas fee: ~$0.01 = 10000 USDC subunits (varies by chain)
- * - Transfer fee: 0.005% of amount (only for crosschain transfers)
  * @see https://developers.circle.com/gateway/references/fees
  */
 function calculateGatewayFee(
@@ -93,22 +70,12 @@ function calculateGatewayFee(
   sourceDomain: number,
   destinationDomain: number
 ): bigint {
-  // Gas fees by domain (in USDC subunits, 6 decimals)
-  // These are approximate values based on network costs
-  const GAS_FEES: Record<number, bigint> = {
-    [CircleDomain.ETHEREUM]: BigInt(2000000),   // ~$2.00
-    [CircleDomain.AVAX]: BigInt(20000),       // ~$0.02
-    [CircleDomain.BASE]: BigInt(10000),        // ~$0.01 
-    [CircleDomain.ARC]: BigInt(10000),         // ~$0.01
-  };
-
   const gasFee = GAS_FEES[sourceDomain] ?? BigInt(10000);
 
   // Transfer fee: 0.005% (only for crosschain transfers)
-  // Same-chain transfers don't have transfer fee
   const isCrosschain = sourceDomain !== destinationDomain;
   const transferFee = isCrosschain
-    ? amount * BigInt(5) / BigInt(100000) // 0.005%
+    ? amount * BigInt(5) / BigInt(100000)
     : BigInt(0);
 
   return gasFee + transferFee;
@@ -217,9 +184,6 @@ export function useDeposit(): UseDepositResult {
 
       for (let i = 0; i < domainsWithBalance.length; i++) {
         const { domain: sourceDomain, balance } = domainsWithBalance[i];
-
-        // Skip Arc domain (destination)
-        // if (sourceDomain === DESTINATION_DOMAIN) continue;
 
         const chain = DOMAIN_TO_CHAIN[sourceDomain];
         if (!chain) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useWallet } from '@/contexts/WalletContext';
-import { shortenAddress } from '@/lib/wallet';
+import { shortenAddress } from '@/lib/format';
 
 export function Header() {
     const { address, isConnected, isConnecting, connect, disconnect } = useWallet();

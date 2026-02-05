@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 import { BalancesResponse } from '@/lib/types';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface UseBalancesResult {
   balances: BalancesResponse | null;
@@ -12,45 +11,28 @@ interface UseBalancesResult {
   refetch: () => Promise<void>;
 }
 
+const fetcher = async (url: string): Promise<BalancesResponse> => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch balances: ${response.status}`);
+  }
+  return response.json();
+};
+
 export function useBalances(address: `0x${string}` | null): UseBalancesResult {
-  const [balances, setBalances] = useState<BalancesResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchBalances = useCallback(async () => {
-    if (!address) {
-      setBalances(null);
-      return;
+  const { data, error, isLoading, mutate } = useSWR<BalancesResponse>(
+    address ? `${API_BASE_URL}/api/wallet/${address}/balances` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
     }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/wallet/${address}/balances`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch balances: ${response.status}`);
-      }
-
-      const data: BalancesResponse = await response.json();
-      setBalances(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      setBalances(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [address]);
-
-  useEffect(() => {
-    fetchBalances();
-  }, [fetchBalances]);
+  );
 
   return {
-    balances,
+    balances: data ?? null,
     isLoading,
-    error,
-    refetch: fetchBalances,
+    error: error?.message ?? null,
+    refetch: async () => { await mutate(); },
   };
 }

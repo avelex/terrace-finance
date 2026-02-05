@@ -1,18 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+
 import { useWallet } from '@/contexts/WalletContext';
 import { useBalances } from '@/hooks/useBalances';
 import { useUnify } from '@/hooks/useUnify';
 import { useDeposit } from '@/hooks/useDeposit';
-import { CircleDomain, DOMAIN_NAMES, DISPLAYED_DOMAINS, TokenBalancesByDomain } from '@/lib/types';
-
-function formatBalance(value: number): string {
-    return value.toLocaleString('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-    });
-}
+import { DOMAIN_NAMES, DISPLAYED_DOMAINS, TokenBalancesByDomain } from '@/lib/types';
+import { formatBalance } from '@/lib/format';
 
 interface BalanceListProps {
     title: string;
@@ -40,12 +34,10 @@ export function BalancesCard() {
     const { isUnifying, currentStep: unifyStep, error: unifyError, unify } = useUnify();
     const { isDepositing, currentStep: depositStep, error: depositError, deposit } = useDeposit();
 
-
-    // Check if there are any USDC balances > 0
+    // Derived state - React Compiler handles memoization automatically
     const hasUsdcBalance = balances?.usdc &&
         Object.values(balances.usdc).some(balance => balance > 0);
 
-    // Check if there are any unified USDC balances > 0
     const hasUnifiedBalance = balances?.unifiedUsdc &&
         Object.values(balances.unifiedUsdc).some(balance => balance > 0);
 
@@ -108,7 +100,6 @@ export function BalancesCard() {
         );
     }
 
-    const currentStep = unifyStep || depositStep;
     const actionError = unifyError || depositError;
 
     return (
@@ -157,4 +148,3 @@ export function BalancesCard() {
         </div>
     );
 }
-

@@ -1,15 +1,8 @@
 import { createPublicClient, createWalletClient, custom, http, Chain } from 'viem';
-import { arcTestnet, baseSepolia, sepolia, avalancheFuji } from 'viem/chains';
+import { arcTestnet } from 'viem/chains';
+import { CHAIN_ID_TO_CHAIN } from './constants';
 
-// Map chainId to chain config
-const CHAIN_MAP: Record<number, Chain> = {
-  11155111: sepolia,
-  43113: avalancheFuji,
-  84532: baseSepolia,
-  5042002: arcTestnet,
-};
-
-// Public client for reading blockchain data (default mainnet)
+// Public client for reading blockchain data (default to Arc testnet)
 export const publicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(),
@@ -17,8 +10,8 @@ export const publicClient = createPublicClient({
 
 // Create public client for specific chain
 export function createPublicClientForChain(chainId: number) {
-  const chain = CHAIN_MAP[chainId] || { 
-    id: chainId, 
+  const chain = CHAIN_ID_TO_CHAIN[chainId] || {
+    id: chainId,
     name: `Chain ${chainId}`,
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
     rpcUrls: { default: { http: [] } },
@@ -68,9 +61,4 @@ export async function getAccounts(): Promise<`0x${string}`[]> {
   }) as `0x${string}`[];
 
   return accounts;
-}
-
-// Shorten address for display
-export function shortenAddress(address: string, chars = 4): string {
-  return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`;
 }
