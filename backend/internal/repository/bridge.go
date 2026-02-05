@@ -98,3 +98,22 @@ func (r *BridgeRepository) UpdateMessageAndAttestation(ctx context.Context, id, 
 
 	return nil
 }
+
+func (r *BridgeRepository) ShowBridgeOperations(ctx context.Context, limit, offset int) ([]models.BridgeOp, int64, error) {
+	var ops []models.BridgeOp
+	err := r.db.NewSelect().Model(&ops).
+		Order("sent_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Scan(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("unable to get bridge operations: %w", err)
+	}
+
+	total, err := r.db.NewSelect().Model(new(models.BridgeOp)).Count(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("unable to get bridge operations count: %w", err)
+	}
+
+	return ops, int64(total), nil
+}

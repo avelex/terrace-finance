@@ -5,28 +5,50 @@ system:
   block_extractor:
     disabled: true
 networks:
-  - name: base
-    rpc: https://rpc.ankr.com/base
+  - name: arc
+    rpc: https://rpc.testnet.arc.network
     rate_limit:
       per: 1s
       limit: 5
     blocks_proc:
-      batch_limit: 50
+      batch_limit: 100
       interval: 2s
-      start_from: 40850490
-  - name: arbitrum
-    rpc: https://rpc.ankr.com/arbitrum
+      start_from: 25433927
+  - name: ethereum
+    rpc: https://ethereum-sepolia-rpc.publicnode.com
     rate_limit:
       per: 1s
       limit: 5
     blocks_proc:
-      batch_limit: 50
-      interval: 1s
+      batch_limit: 100
+      interval: 2s
+      start_from: 10196278
+  - name: base
+    rpc: https://base-sepolia-rpc.publicnode.com
+    rate_limit:
+      per: 1s
+      limit: 5
+    blocks_proc:
+      batch_limit: 100
+      interval: 2s
+      start_from: 37261654
 events:
   - name: SendFunds
     signature: event SendFunds(bytes32 id, address fromTerrace, uint32 fromDomain, address toTerrace, uint32 toDomain, uint256 amount)
     networks:
+      arc:
+        0x851addF749C87F1159F30399F2ca160F8Ccdb6B1: Vault
+      ethereum:
+        0x48FE48c34Fd0A4ECE33BF4f0770DE87435D73C50: Vault
+      base:
+        0xa87b4A187f1adB4332DbFfeB664f63a26EBc882e: Vault
   - name: ReceivedFunds
     signature: event ReceivedFunds(bytes32 id, address fromTerrace, uint32 fromDomain, address toTerrace, uint32 toDomain, uint256 amount)
     networks:
+      arc:
+        0x851addF749C87F1159F30399F2ca160F8Ccdb6B1: Vault
+      ethereum:
+        0x48FE48c34Fd0A4ECE33BF4f0770DE87435D73C50: Vault
+      base:
+        0xa87b4A187f1adB4332DbFfeB664f63a26EBc882e: Vault
 

@@ -13,7 +13,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/shopspring/decimal"
 )
 
 type AaveRepository interface {
@@ -53,23 +52,6 @@ func (s *Service) UpdateReserveData(ctx context.Context, reserve models.ReserveD
 	}
 
 	return nil
-}
-
-func (s *Service) SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error) {
-	fees, err := s.cctp.Fees(ctx, uint32(srcDomain), uint32(dstDomain))
-	if err != nil {
-		return "", fmt.Errorf("get fees: %w", err)
-	}
-
-	fastMinFee := fees.FastTransfer()
-	maxFee := calculateMaxFee(fastMinFee)
-
-	txHash, err := s.transactor.SendAllFunds(ctx, srcDomain, dstDomain, maxFee)
-	if err != nil {
-		return "", fmt.Errorf("send all funds: %w", err)
-	}
-
-	return txHash, nil
 }
 
 func (s *Service) SupplyAllFundsToAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error) {
@@ -140,18 +122,6 @@ func (s *Service) WithdrawAllFundsFromAaveV3(ctx context.Context, domain enum.Ci
 	}
 
 	return txHash, nil
-}
-
-// fee in bps, for example, 1 = 0.01% = 0.0001
-func calculateMaxFee(fee decimal.Decimal) *big.Int {
-	if fee.IsZero() {
-		return big.NewInt(0)
-	}
-
-	// Convert to subunits and add 20% buffer
-	feeSubunits := fee.Div(decimal.NewFromInt(1_00_00)).Mul(decimal.NewFromInt(1_000_000))
-	maxFee := feeSubunits.Mul(decimal.NewFromFloat(1.2))
-	return maxFee.BigInt()
 }
 
 func encodeApprove(spender common.Address, amount *big.Int) ([]byte, error) {

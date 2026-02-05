@@ -17,9 +17,13 @@ import (
 )
 
 type StrategyService interface {
-	SendAllFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error)
 	SupplyAllFundsToAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error)
 	WithdrawAllFundsFromAaveV3(ctx context.Context, domain enum.CircleDomain) (string, error)
+}
+
+type BridgeService interface {
+	BridgeFunds(ctx context.Context, srcDomain, dstDomain enum.CircleDomain) (string, error)
+	ShowBridgeOperations(ctx context.Context, limit, page int) (response.PagableBridgeOps, error)
 }
 
 type WalletService interface {
@@ -34,17 +38,23 @@ type WalletService interface {
 type Handler struct {
 	strategyService StrategyService
 	walletService   WalletService
+	bridgeService   BridgeService
 }
 
-func NewHandler(ss StrategyService, ws WalletService) *Handler {
+func NewHandler(ss StrategyService, ws WalletService, bs BridgeService) *Handler {
 	return &Handler{
 		strategyService: ss,
 		walletService:   ws,
+		bridgeService:   bs,
 	}
 }
 
 func (h *Handler) Register(g *echo.Group) {
-	g.GET("/send/:src/:dst", h.send)
+	cctpGroup := g.Group("/bridge")
+	{
+		cctpGroup.GET("/send/:src/:dst", h.bridgeSend)
+		cctpGroup.GET("/operations", h.showBridgeOperations)
+	}
 
 	strategyGroup := g.Group("/strategy")
 	{
@@ -61,9 +71,10 @@ func (h *Handler) Register(g *echo.Group) {
 		walletGroup.POST("/:address/deposit_stake", h.walletDepositAndStake)
 		walletGroup.GET("/:address/deposit_stake/list", h.walletDeposits)
 	}
+
 }
 
-func (h *Handler) send(c echo.Context) error {
+func (h *Handler) bridgeSend(c echo.Context) error {
 	srcDomain, err := parseDomain(c.Param("src"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid src domain")
@@ -74,7 +85,7 @@ func (h *Handler) send(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid dst domain")
 	}
 
-	txHash, err := h.strategyService.SendAllFunds(c.Request().Context(), srcDomain, dstDomain)
+	txHash, err := h.bridgeService.BridgeFunds(c.Request().Context(), srcDomain, dstDomain)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -214,6 +225,25 @@ func (h *Handler) walletDeposits(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, deposits)
+}
+
+func (h *Handler) showBridgeOperations(c echo.Context) error {
+	limit := 10
+	if l, err := strconv.Atoi(c.QueryParam("limit")); err == nil {
+		limit = l
+	}
+
+	page := 0
+	if p, err := strconv.Atoi(c.QueryParam("page")); err == nil {
+		page = p
+	}
+
+	ops, err := h.bridgeService.ShowBridgeOperations(c.Request().Context(), limit, page)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, ops)
 }
 
 func parseAddress(addr string) (common.Address, error) {

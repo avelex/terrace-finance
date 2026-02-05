@@ -10,9 +10,11 @@ networks:
   - name: "ethereum"
     domain: 0
     rpc_url: "https://ethereum-sepolia-rpc.publicnode.com"
+    vault: "0x48FE48c34Fd0A4ECE33BF4f0770DE87435D73C50"
   - name: "base"
     domain: 6
     rpc_url: "https://base-sepolia-rpc.publicnode.com"
+    vault: "0xa87b4A187f1adB4332DbFfeB664f63a26EBc882e"
   - name: "avalanche"
     domain: 1
     rpc_url: "https://avalanche-fuji-c-chain-rpc.publicnode.com"

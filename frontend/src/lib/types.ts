@@ -91,6 +91,29 @@ export interface UserDeposit {
   depositedAt: string;
 }
 
+// GET /api/bridge/operations - Response item
+export interface BridgeOperation {
+  id: string;
+  fromTerrace: string;
+  fromDomain: number;
+  toTerrace: string;
+  toDomain: number;
+  sendAmount: string;
+  receivedAmount: string;
+  sentTxHash: string;
+  receivedTxHash: string;
+  sentAt: string;
+  receivedAt: string;
+}
+
+// GET /api/bridge/operations - Paginated response
+export interface PaginatedBridgeOps {
+  data: BridgeOperation[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 // GET /api/wallet/:address/unify/list - Response item
 export interface UserUnifiedPermit {
   id: string;

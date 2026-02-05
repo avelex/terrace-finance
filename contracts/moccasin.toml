@@ -24,6 +24,51 @@ gateway_minter = {"address" = "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B"}
 withdrawal_delay = 30
 hub_domain = 26
 
+[networks.sepolia]
+url = "https://ethereum-sepolia-rpc.publicnode.com"
+explorer_uri = "https://eth-sepolia.blockscout.com/"
+explorer_type = "blockscout"
+chain_id = 11155111
+fork = false
+
+[networks.sepolia.contracts]
+usdc = {"address" = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"}
+messanger = {"address" = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"}
+transmitter = {"address" = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"}
+
+[networks.sepolia.extra_data]
+hub_domain = 26
+
+[networks.base_sepolia]
+url = "https://base-sepolia-rpc.publicnode.com"
+explorer_uri = "https://base-sepolia.blockscout.com/"
+explorer_type = "blockscout"
+chain_id = 84532
+fork = false
+
+[networks.base_sepolia.contracts]
+usdc = {"address" = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"}
+messanger = {"address" = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"}
+transmitter = {"address" = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"}
+
+[networks.base_sepolia.extra_data]
+hub_domain = 26
+
+[networks.avalanche_fuji]
+url = "https://avalanche-fuji-c-chain-rpc.publicnode.com"
+explorer_uri = "https://testnet.snowtrace.io/"
+explorer_type = "etherscan"
+chain_id = 43113
+fork = false
+
+[networks.avalanche_fuji.contracts]
+usdc = {"address" = "0x5425890298aed601595a70AB815c96711a31Bc65"}
+messanger = {"address" = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"}
+transmitter = {"address" = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"}
+
+[networks.avalanche_fuji.extra_data]
+hub_domain = 26
+
 [networks.contracts]
 stablecoin = {  deployer_script = "script/deploy_stablecoin.py" }
 vault = {  deployer_script = "script/deploy_vault.py" }
