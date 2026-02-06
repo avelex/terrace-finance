@@ -12,15 +12,11 @@ export function UsdcBalance() {
     const { balances, isLoading } = useBalances(address);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    if (!isConnected || isLoading || !balances) {
-        return null;
-    }
-
     // Sum of unified USDC balances from all domains (values are already in human-readable)
-    const totalUnifiedUsdc = Object.values(balances.unifiedUsdc).reduce(
-        (sum, domain) => sum + (BigInt(domain) ?? 0),
+    const totalUnifiedUsdc = balances ? Object.values(balances.unifiedUsdc).reduce(
+        (sum, domain) => sum + BigInt(domain || 0),
         BigInt(0)
-    );
+    ) : BigInt(0);
 
     const formattedBalance = formatUsdcValue(totalUnifiedUsdc);
 

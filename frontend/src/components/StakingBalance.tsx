@@ -8,12 +8,8 @@ export function StakingBalance() {
     const { address, isConnected } = useWallet();
     const { balances, isLoading } = useBalances(address);
 
-    if (!isConnected || isLoading || !balances) {
-        return null;
-    }
-
     // stakingBalance is already in human-readable format from backend
-    const formattedBalance = formatStakingBalance(balances.stakingBalance);
+    const formattedBalance = formatStakingBalance(balances?.stakingBalance ?? 0);
 
     return (
         <div className="balance-badge">
