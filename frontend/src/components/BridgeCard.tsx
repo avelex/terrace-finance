@@ -111,7 +111,7 @@ export const BridgeCard = memo(function BridgeCard() {
                 )}
                 {result?.txHash && (
                     <div className="bridge-success">
-                        ✓ Tx: {result.txHash.slice(0, 10)}...{result.txHash.slice(-8)}
+                        Tx: {result.txHash.slice(0, 10)}...{result.txHash.slice(-8)}
                     </div>
                 )}
             </div>

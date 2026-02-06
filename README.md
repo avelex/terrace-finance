@@ -1,5 +1,5 @@
 # Terrace Finance
-Decentralized one-click stablecoinyield platform
+Decentralized one-click stablecoin yield platform
 
 ## About
 Inspired by Subak, the ancient Balinese art of perfect distribution, we bring harmony to DeFi. Our platform is a non-custodial investment layer built for the Arc ecosystem and powered by Circle technologies.
