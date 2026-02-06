@@ -109,7 +109,7 @@ export function PermitsListCard() {
                             return (
                                 <tr key={group.id}>
                                     <td>{domainNames}</td>
-                                    <td>{formatUsdcValue(group.totalValue)} USDC</td>
+                                    <td>{formatUsdcValue(BigInt(group.totalValue))} USDC</td>
                                     <td>
                                         <StatusBadge label={status.label} variant={status.variant} />
                                     </td>

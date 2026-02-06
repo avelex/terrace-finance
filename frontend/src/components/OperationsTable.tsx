@@ -94,7 +94,7 @@ export const OperationsTable = memo(function OperationsTable() {
                                             {getDomainName(op.toDomain)}
                                         </a>
                                     </td>
-                                    <td>{formatUsdcValue(op.sendAmount)} USDC</td>
+                                    <td>{formatUsdcValue(BigInt(op.sendAmount))} USDC</td>
                                     <td>
                                         <StatusBadge label={status.label} variant={status.variant} />
                                     </td>

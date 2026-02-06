@@ -36,10 +36,11 @@ type SendFunds struct {
 }
 
 func (s SendFunds) BridgeOp() BridgeOp {
-	sentAt := time.Unix(s.Timestamp, 0)
-	if sentAt.IsZero() {
-		sentAt = time.Now()
+	if s.Timestamp == 0 {
+		s.Timestamp = time.Now().Unix()
 	}
+
+	sentAt := time.Unix(s.Timestamp, 0)
 
 	return BridgeOp{
 		ID:          common.BytesToHash(s.ID[:]).String(),

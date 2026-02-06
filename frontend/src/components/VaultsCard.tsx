@@ -66,7 +66,7 @@ export const VaultsCard = memo(function VaultsCard() {
                                         {shortenAddress(vault.address)}
                                     </a>
                                 </td>
-                                <td>{formatUsdcValue(vault.balance)} USDC</td>
+                                <td>{formatUsdcValue(BigInt(vault.balance))} USDC</td>
                             </tr>
                         ))}
                     </tbody>

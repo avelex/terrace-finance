@@ -97,6 +97,48 @@ body {
   border-color: var(--border-color);
 }
 
+/* Header Right Section */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Balance Badges */
+.balance-badge {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border: 1.5px solid var(--foreground);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 12px;
+}
+
+.balance-badge-clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.balance-badge-clickable:hover {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.balance-badge-label {
+  opacity: 0.7;
+}
+
+.balance-badge-value {
+  font-weight: 600;
+}
+
+.balance-badge-divider {
+  opacity: 0.4;
+}
+
 /* Main Layout */
 .main-container {
   min-height: 100vh;
@@ -191,6 +233,42 @@ body {
 .deposit-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.balance-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.max-button {
+  padding: 4px 8px;
+  border: 1px solid var(--foreground);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.max-button:hover:not(:disabled) {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.max-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.deposit-error {
+  font-size: 13px;
+  color: #dc2626;
+  text-align: center;
 }
 
 /* Balances Card */
@@ -623,4 +701,117 @@ body {
 .explorer-link:hover {
   opacity: 1;
   border-bottom-style: solid;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--background);
+  border: 1.5px solid var(--foreground);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--foreground);
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.modal-close:hover {
+  opacity: 1;
+}
+
+.modal-header {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.modal-balances-columns {
+  display: flex;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--foreground);
+  opacity: 0.3;
+  margin-bottom: 16px;
+}
+
+.modal-balances-columns:hover {
+  opacity: 1;
+}
+
+.modal-balance-list {
+  flex: 1;
+}
+
+.modal-balance-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.modal-balance-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-balance-item {
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.modal-unify-button {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid var(--foreground);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-unify-button:hover:not(:disabled) {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.modal-unify-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-error {
+  font-size: 13px;
+  color: #dc2626;
+  text-align: center;
+  margin-top: 12px;
 }

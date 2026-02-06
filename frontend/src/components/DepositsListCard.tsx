@@ -66,7 +66,7 @@ export function DepositsListCard() {
                             return (
                                 <tr key={deposit.id}>
                                     <td>{domainName}</td>
-                                    <td>{formatUsdcValue(deposit.value)} USDC</td>
+                                    <td>{formatUsdcValue(BigInt(deposit.value))} USDC</td>
                                     <td>
                                         <StatusBadge label={status.label} variant={status.variant} />
                                     </td>

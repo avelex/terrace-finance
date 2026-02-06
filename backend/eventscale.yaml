@@ -13,7 +13,7 @@ networks:
     blocks_proc:
       batch_limit: 100
       interval: 2s
-      # start_from: 25433927
+      start_from: 25551573
   - name: ethereum
     rpc: https://ethereum-sepolia-rpc.publicnode.com
     rate_limit:
@@ -40,7 +40,7 @@ networks:
     blocks_proc:
       batch_limit: 100
       interval: 2s
-      # start_from: 51513600
+      start_from: 51540050
 events:
   - name: SendFunds
     signature: event SendFunds(bytes32 id, address fromTerrace, uint32 fromDomain, address toTerrace, uint32 toDomain, uint256 amount)
