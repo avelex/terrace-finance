@@ -142,7 +142,7 @@ func run(ctx context.Context) error {
 		log.Info().Msg("started API server")
 
 		defer wg.Done()
-		echoRouter.Start(":8080")
+		echoRouter.Start(":" + conf.Port)
 	}()
 
 	<-ctx.Done()

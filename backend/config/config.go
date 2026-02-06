@@ -17,6 +17,7 @@ const DebugLevel = "debug"
 
 type Config struct {
 	LogLevel      string    `env:"LOG_LEVEL" env-default:"info"`
+	Port          string    `env:"PORT" env-default:"8080"`
 	EventscaleURL string    `env:"EVENTSCALE_URL" env-required:"true"`
 	DB            string    `env:"DB_URL" env-required:"true"`
 	PrivateKey    string    `env:"PRIVATE_KEY" env-required:"true"`
