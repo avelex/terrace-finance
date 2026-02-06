@@ -78,14 +78,20 @@ export function DepositCard() {
                     USDC
                 </span>
                 <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     className="amount-input"
-                    placeholder="0"
+                    placeholder="0.00"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    min="0"
-                    step="any"
+                    onChange={(e) => {
+                        // Allow only numbers and dots, convert commas to dots
+                        const value = e.target.value.replace(/,/g, '.');
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                            setAmount(value);
+                        }
+                    }}
                     disabled={isDepositing}
+                    pattern="^[0-9]*[.,]?[0-9]*$"
                 />
             </div>
 
