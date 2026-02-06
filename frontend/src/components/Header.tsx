@@ -12,12 +12,14 @@ export function Header() {
     return (
         <header className="header">
             <div className="header-left">
-                <Link href="/" className="header-logo">Terrace Finance</Link>
-                <nav className="header-nav">
-                    <Link href="/explorer" className="nav-link">Explorer</Link>
-                    <Link href="/dashboard" className="nav-link">Dashboard</Link>
-                </nav>
+                <Link href="/" className="header-logo">TERRACE</Link>
             </div>
+
+            <nav className="header-nav">
+                <Link href="/explorer" className="nav-link">EXPLORER</Link>
+                <Link href="/dashboard" className="nav-link">DASHBOARD</Link>
+                <Link href="/about" className="nav-link">ABOUT</Link>
+            </nav>
 
             <div className="header-right">
                 <StakingBalance />
@@ -36,7 +38,7 @@ export function Header() {
                         onClick={connect}
                         disabled={isConnecting}
                     >
-                        {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                        {isConnecting ? 'CONNECTING...' : 'CONNECT WALLET'}
                     </button>
                 )}
             </div>

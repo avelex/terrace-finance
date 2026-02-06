@@ -6,7 +6,16 @@ export default function Home() {
     <>
       <Header />
       <main className="main-container">
-        <DepositCard />
+        <div className="content-wrapper">
+          <div className="hero-section">
+            <h1 className="hero-title">Terrace</h1>
+            <p className="hero-subtitle">DECENTRALIZED ONE-CLICK STABLECOIN YIELD PLATFORM</p>
+          </div>
+          <div className="card-section">
+            <DepositCard />
+          </div>
+
+        </div>
       </main>
     </>
   );

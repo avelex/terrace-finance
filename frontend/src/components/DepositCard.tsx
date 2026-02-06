@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useMemo } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { useBalances } from '@/hooks/useBalances';
@@ -71,12 +72,11 @@ export function DepositCard() {
 
     return (
         <div className="deposit-card">
-            <div className="apy-display">
-                ~10% APY
-            </div>
-
             <div className="input-row">
-                <span className="token-label">USDC</span>
+                <span className="token-label">
+                    <Image src="/usdc-logo.png" alt="USDC" width={24} height={24} />
+                    USDC
+                </span>
                 <input
                     type="number"
                     className="amount-input"
@@ -119,7 +119,7 @@ export function DepositCard() {
                 onClick={handleDeposit}
                 disabled={!isConnected || !isAmountValid || isDepositing}
             >
-                {isDepositing ? (currentStep || 'Processing...') : 'Deposit'}
+                {isDepositing ? (currentStep || 'PROCESSING...') : 'DEPOSIT'}
             </button>
         </div>
     );

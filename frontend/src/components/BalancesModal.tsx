@@ -18,13 +18,17 @@ function BalanceList({ title, balances }: BalanceListProps) {
             <ul className="modal-balance-items">
                 {DISPLAYED_DOMAINS.map((domain) => (
                     <li key={domain} className="modal-balance-item">
-                        - {DOMAIN_NAMES[domain]}: {formatUsdcValue(BigInt(balances?.[domain] ?? 0))}
+                        <span>{DOMAIN_NAMES[domain]}</span>
+                        <span>{formatUsdcValue(BigInt(balances?.[domain] ?? 0))}</span>
                     </li>
                 ))}
             </ul>
         </div>
     );
 }
+
+import { createPortal } from 'react-dom';
+import { useState, useEffect } from 'react';
 
 interface BalancesModalProps {
     onClose: () => void;
@@ -34,6 +38,16 @@ export function BalancesModal({ onClose }: BalancesModalProps) {
     const { address } = useWallet();
     const { balances, refetch } = useBalances(address);
     const { isUnifying, currentStep: unifyStep, error: unifyError, unify } = useUnify();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
 
     const hasUsdcBalance = balances?.usdc &&
         Object.values(balances.usdc).some(balance => balance > 0);
@@ -53,12 +67,14 @@ export function BalancesModal({ onClose }: BalancesModalProps) {
         }
     };
 
-    return (
+    if (!mounted) return null;
+
+    return createPortal(
         <div className="modal-overlay" onClick={handleOverlayClick}>
             <div className="modal-content">
                 <button className="modal-close" onClick={onClose}>×</button>
 
-                <div className="modal-header">Balances</div>
+                <div className="modal-header">BALANCES</div>
 
                 <div className="modal-balances-columns">
                     <BalanceList title="USDC" balances={balances?.usdc} />
@@ -77,6 +93,7 @@ export function BalancesModal({ onClose }: BalancesModalProps) {
                     <div className="modal-error">{unifyError}</div>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

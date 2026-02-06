@@ -13,7 +13,7 @@ export function StakingBalance() {
 
     return (
         <div className="balance-badge">
-            <span className="balance-badge-label">Staking</span>
+            <span className="balance-badge-label">STACKING</span>
             <span className="balance-badge-divider">|</span>
             <span className="balance-badge-value">{formattedBalance}</span>
         </div>

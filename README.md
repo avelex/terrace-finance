@@ -1,7 +1,12 @@
 # Terrace Finance
-Decentralized cross-chain yield protocol
+Decentralized one-click stablecoinyield platform
 
-## How it works
+## About
+Inspired by Subak, the ancient Balinese art of perfect distribution, we bring harmony to DeFi. Our platform is a non-custodial investment layer built for the Arc ecosystem and powered by Circle technologies.
+
+Like water flowing through rice terraces, our system automatically reallocates stablecoins across lending protocols to capture the highest returns. The result is a seamless, automated flow of capital designed for peak efficiency and superior yield.
+
+## How It Works
 ![diagram](docs/diagram.svg)
 
 ## Deployments
