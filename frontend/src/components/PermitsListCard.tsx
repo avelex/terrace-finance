@@ -5,6 +5,7 @@ import { useWallet } from '@/contexts/WalletContext';
 import { usePermits } from '@/hooks/usePermits';
 import { DOMAIN_NAMES, CircleDomain, UserUnifiedPermit } from '@/lib/types';
 import { formatUsdcValue, formatDate } from '@/lib/format';
+import { getTxExplorerUrl } from '@/lib/constants';
 import { StatusBadge, getPermitGroupStatus } from './StatusBadge';
 
 interface GroupedPermit {
@@ -125,7 +126,7 @@ export function PermitsListCard() {
                             <th>Domains</th>
                             <th>Total Value</th>
                             <th>Status</th>
-                            <th>Created</th>
+                            <th>Executed At</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -141,7 +142,18 @@ export function PermitsListCard() {
                                     <td>
                                         <StatusBadge label={status.label} variant={status.variant} />
                                     </td>
-                                    <td>{formatDate(group.createdAt)}</td>
+                                    <td>
+                                        {group.permits[0]?.txHash ? (
+                                            <a
+                                                href={getTxExplorerUrl(group.permits[0].domain, group.permits[0].txHash)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="explorer-link"
+                                            >
+                                                {formatDate(group.createdAt)}
+                                            </a>
+                                        ) : formatDate(group.createdAt)}
+                                    </td>
                                 </tr>
                             );
                         })}

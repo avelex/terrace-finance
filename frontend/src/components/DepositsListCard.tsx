@@ -4,11 +4,13 @@ import { useWallet } from '@/contexts/WalletContext';
 import { useDeposits } from '@/hooks/useDeposits';
 import { DOMAIN_NAMES, CircleDomain } from '@/lib/types';
 import { formatUsdcValue, formatDate } from '@/lib/format';
+import { getTxExplorerUrl } from '@/lib/constants';
 import { StatusBadge, getDepositStatus } from './StatusBadge';
 
 export function DepositsListCard() {
     const { address, isConnected } = useWallet();
-    const { deposits, isLoading, error, refetch } = useDeposits(address);
+    const { deposits: rawDeposits, isLoading, error, refetch } = useDeposits(address);
+    const deposits = [...(rawDeposits || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (!isConnected) {
         return (
@@ -84,7 +86,7 @@ export function DepositsListCard() {
                             <th>Domain</th>
                             <th>Value</th>
                             <th>Status</th>
-                            <th>Created</th>
+                            <th>Executed At</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -98,7 +100,16 @@ export function DepositsListCard() {
                                     <td>
                                         <StatusBadge label={status.label} variant={status.variant} />
                                     </td>
-                                    <td>{formatDate(deposit.createdAt)}</td>
+                                    <td>
+                                        <a
+                                            href={getTxExplorerUrl(deposit.destDomain, deposit.txHash)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="explorer-link"
+                                        >
+                                            {formatDate(deposit.createdAt)}
+                                        </a>
+                                    </td>
                                 </tr>
                             );
                         })}

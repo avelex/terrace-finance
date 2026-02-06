@@ -142,12 +142,14 @@ func (s *Service) UnifyUSDC(ctx context.Context, user common.Address, domains []
 			return nil, fmt.Errorf("usdc caller for %s: %w", network, err)
 		}
 
-		// usdcBalance, err := usdcCaller.BalanceOf(&bind.CallOpts{Context: ctx}, user)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("usdc balance in %s: %w", network, err)
-		// }
+		usdcBalance, err := usdcCaller.BalanceOf(&bind.CallOpts{Context: ctx}, user)
+		if err != nil {
+			return nil, fmt.Errorf("usdc balance in %s: %w", network, err)
+		}
 
-		usdcBalance := big.NewInt(100_000) // 0.1 USDC
+		if domain == enum.ARC_DOMAIN {
+			usdcBalance = new(big.Int).Sub(usdcBalance, big.NewInt(1))
+		}
 
 		permitNonce, err := usdcCaller.Nonces(&bind.CallOpts{Context: ctx}, user)
 		if err != nil {
