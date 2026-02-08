@@ -1,5 +1,10 @@
-# Terrace Finance
-Decentralized one-click stablecoin yield platform
+<p align="center">
+  <br />
+  <img src="./docs/logo.png" width="200" alt="">
+  <br />
+  <h2 align="center">Terrace Finance</h2>
+  <p align="center"><strong>Decentralized one-click stablecoin yield platform</strong></p>
+</p>
 
 ## About
 Inspired by Subak, the ancient Balinese art of perfect distribution, we bring harmony to DeFi. Our platform is a non-custodial investment layer built for the Arc ecosystem and powered by Circle technologies.
@@ -8,6 +13,12 @@ Like water flowing through rice terraces, our system automatically reallocates s
 
 ## How It Works
 ![diagram](docs/diagram.svg)
+
+1. User make Unified USDC balance by depositing tokens into Circle Gateway.
+2. Backend mints and stakes USDC on Arc, on behalf of User for better UX.
+3. User receive stUSD - yield-bearing token.
+4. Terrace’s Operator reallocates USDC across lending protocols to capture the highest returns, using Circle CCTP v2.
+5. Earned fees are distributed to stUSD holders.
 
 ## Deployments
 
@@ -28,3 +39,35 @@ Like water flowing through rice terraces, our system automatically reallocates s
 | Ethereum | 0x48FE48c34Fd0A4ECE33BF4f0770DE87435D73C50 |
 | Base | 0xa87b4A187f1adB4332DbFfeB664f63a26EBc882e |
 | Avalanche | 0xd08E361585f0c0e953e98C5D2Fa83e7d67e39013 |
+
+## Build
+
+### Contracts
+**Prerequisites**:
+- [Moccasin](https://cyfrin.github.io/moccasin/index.html)
+
+
+```bash
+cd contracts
+mox install
+mox compile src/Stablecoin.vy && mox compile src/Staking.vy && mox compile src/Vault.vy
+mox deploy stablecoin --network arc --account {your_imported_account}
+mox deploy vault --network arc --account {your_imported_account}
+```
+
+### Backend
+```bash
+cd backend
+cp .env.example .env
+# Edit .env file
+docker build -t terrace-backend:0.1.0 -f Dockerfile .
+docker compose up -d
+```
+
+### Frontend
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```

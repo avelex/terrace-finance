@@ -167,7 +167,6 @@ cython_debug/
 # Moccasin
 .env
 .env.unsafe
-.env*
 out/
 build/
 contracts/lib/
